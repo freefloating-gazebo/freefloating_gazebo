@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     # get topic type
     topic_struct = args.topic.split('/') + ['']
-    msg_type = msg_attr = topic_actual = ''
+    msg_type = msg_field = topic_actual = ''
     i = 1
     while i < len(topic_struct)-1:
         ros_out = getoutput('rostopic info %s' % '/'.join(topic_struct[:-i])).splitlines()[0].split(' ')
@@ -39,7 +39,7 @@ if __name__ == '__main__':
         else:
             # found a topic
             msg_type = ros_out[-1]
-            msg_attr = '/'.join(topic_struct[-i:-1])
+            msg_field = '/'.join(topic_struct[-i:-1])
             topic_actual = '/'.join(topic_struct[:-i])
             break
             
@@ -76,8 +76,8 @@ if __name__ == '__main__':
             # get new element
             new_elem = GetMsgTree(i)
             
-            if msg_attr != '':
-                if msg_attr in new_elem:                                    # if new_elem in the desired scope, add it
+            if msg_field != '':
+                if msg_field in new_elem:                                    # if new_elem in the desired scope, add it
                     msg_map[elem_type].insert(0, new_elem)
             elif [ign in new_elem for ign in ignore].count(True) == 0:      # add it also if not in ignore list
                     msg_map[elem_type].insert(0, new_elem)
@@ -98,7 +98,7 @@ if __name__ == '__main__':
                 attr = getattr(attr, sub_msg)
             msg_array_dim.append(len(attr))
                         
-    # get list of all values to be plotted
+    # build list of all values to be plotted
     all_topics = []
     if len(msg_floats) != 0:
         all_topics += ['%s/%s' % (topic_actual, msg_float) for msg_float in msg_floats]
@@ -106,7 +106,7 @@ if __name__ == '__main__':
         for i,msg_array in enumerate(msg_arrays):
             all_topics += ['%s/%s[%i]' % (topic_actual, msg_array, j) for j in xrange(msg_array_dim[i])]
             
-    # separate in several subplots according to message attributes
+    # separate in several subplots according to message fields (last field does not count)
     # TODO: does not seem to change anything, was working in rxplot
     sub_topics = [all_topics[0]]
     topic_key = all_topics[0].split('/')[:-1]

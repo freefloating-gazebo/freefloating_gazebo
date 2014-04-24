@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package>
+   <name>freefloating_gazebo</name>
+  <version>1.0.0</version>
+  <description>A plugin to simulate underwater vehicles in Gazebo and visualise with UWsim.</description>
+  <maintainer email="olivier_kermorgant@yahoo.fr">Olivier Kermorgant</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">https://github.com/ros-underwater/freefloating_gazebo</url>
+
+  <author>Olivier Kermorgant</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>urdf</build_depend>
+  <build_depend>gazebo_ros</build_depend>
+  <build_depend>control_toolbox</build_depend>
+  <build_depend>rostime</build_depend>
+  <run_depend>rostime</run_depend>
+  <run_depend>control_toolbox</run_depend>
+  <run_depend>gazebo_ros</run_depend>
+  <run_depend>urdf</run_depend>
+
+  <export>
+    <gazebo_ros plugin_path="${prefix}/lib" gazebo_media_path="${prefix}" />
+  </export>
+</package>

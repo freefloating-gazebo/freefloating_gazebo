@@ -146,10 +146,10 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
             {
                 controlled_axes.push_back(axe[dir_i]);
                 // push to position PID
-                sprintf(param, "%s/%s/position/i_clamp", body_->GetName().c_str(), axe[dir_i].c_str());
+                sprintf(param, "%s/position/i_clamp", axe[dir_i].c_str());
                 control_node.setParam(param, thruster_max_effort);
                 // push to velocity PID
-                sprintf(param, "%s/%s/velocity/i_clamp", body_->GetName().c_str(), axe[dir_i].c_str());
+                sprintf(param, "%s/velocity/i_clamp", axe[dir_i].c_str());
                 control_node.setParam(param, thruster_max_effort);
             }
         }

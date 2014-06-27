@@ -284,7 +284,7 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
     if(previous_link_number == buoyant_links_.size())
         ROS_INFO_NAMED("Buoyancy plugin", "No links subject to buoyancy inside %s", _model->GetName().c_str());
     else
-        ROS_INFO_NAMED("Buoyancy plugin", "Added %i buoy links from %s", buoyant_links_.size()-previous_link_number, _model->GetName().c_str());
+        ROS_INFO_NAMED("Buoyancy plugin", "Added %i buoy links from %s", (int) buoyant_links_.size()-previous_link_number, _model->GetName().c_str());
 }
 
 void FreeFloatingFluidPlugin::RemoveDeletedModel(std::vector<model_st>::iterator &_model_it)

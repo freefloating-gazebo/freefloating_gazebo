@@ -15,23 +15,28 @@ int main(int argc, char ** argv)
     ros::NodeHandle rosnode;
     ros::NodeHandle pid_node(rosnode, "controllers");
 
-    // -- Parse body data ---------
+    // -- Parse body data if needed ---------
 
     // body setpoint and state topics
-    std::string body_setpoint_topic;
-    pid_node.param("config/body/setpoint", body_setpoint_topic, std::string("body_setpoint"));
-    std::string body_state_topic = "body_state";
-    pid_node.param("config/body/state", body_state_topic, std::string("body_state"));
-    // controlled body axes
+    std::string body_setpoint_topic, body_state_topic = "body_state";
     std::vector<std::string> controlled_axes;
-    pid_node.getParam("config/body/axes", controlled_axes);
+    bool control_body = false;
+    ROS_INFO("Init PID control for %s", rosnode.getNamespace().c_str());
+    if(pid_node.hasParam("config/body"))
+    {
+        control_body = true;
+        pid_node.param("config/body/setpoint", body_setpoint_topic, std::string("body_setpoint"));
+        pid_node.param("config/body/state", body_state_topic, std::string("body_state"));
+        // controlled body axes
+        pid_node.getParam("config/body/axes", controlled_axes);
+    }
 
     // -- Parse joint data if needed ---------
     std::string joint_setpoint_topic, joint_state_topic;
-    bool has_joints = false;
+    bool control_joints = false;
     if(pid_node.hasParam("config/joints/name"))
     {
-        has_joints = true;
+        control_joints = true;
         // joint setpoint and state topics
         pid_node.param("config/joints/setpoint", joint_setpoint_topic, std::string("joint_setpoint"));
         pid_node.param("config/joints/state", joint_state_topic, std::string("joint_states"));
@@ -43,22 +48,26 @@ int main(int argc, char ** argv)
     ros::Duration dt(.01);
 
     ros::SubscribeOptions ops;
+
     // -- Init body ------------------
     // PID's class
     FreeFloatingBodyPids body_pid;
-    body_pid.Init(pid_node, dt, controlled_axes);
+    ros::Subscriber body_setpoint_subscriber, body_state_subscriber;
+    ros::Publisher body_command_publisher;
+    if(control_body)
+    {
+        body_pid.Init(pid_node, dt, controlled_axes);
 
-    // setpoint
-    ros::Subscriber body_setpoint_subscriber =
-            rosnode.subscribe(body_setpoint_topic, 1, &FreeFloatingBodyPids::SetpointCallBack, &body_pid);
-
-    // measure
-    ros::Subscriber body_state_subscriber =
-            rosnode.subscribe(body_state_topic, 1, &FreeFloatingBodyPids::MeasureCallBack, &body_pid);
-
-    // command
-    ros::Publisher body_command_publisher =
-            rosnode.advertise<geometry_msgs::Wrench>("body_command", 1);
+        // setpoint
+        body_setpoint_subscriber =
+                rosnode.subscribe(body_setpoint_topic, 1, &FreeFloatingBodyPids::SetpointCallBack, &body_pid);
+        // measure
+        body_state_subscriber =
+                rosnode.subscribe(body_state_topic, 1, &FreeFloatingBodyPids::MeasureCallBack, &body_pid);
+        // command
+        body_command_publisher =
+                rosnode.advertise<geometry_msgs::Wrench>("body_command", 1);
+    }
 
     // -- Init joints ------------------
     FreeFloatingJointPids joint_pid;
@@ -66,7 +75,7 @@ int main(int argc, char ** argv)
     ros::Subscriber joint_setpoint_subscriber, joint_state_subscriber;
     ros::Publisher joint_command_publisher;
 
-    if(has_joints)
+    if(control_joints)
     {
         // pid
         joint_pid.Init(pid_node, dt);
@@ -85,15 +94,14 @@ int main(int argc, char ** argv)
     while(ros::ok())
     {
         // update body and publish
-        if(body_pid.UpdatePID())
-            body_command_publisher.publish(body_pid.WrenchCommand());
+        if(control_body)
+            if(body_pid.UpdatePID())
+                body_command_publisher.publish(body_pid.WrenchCommand());
 
         // update joints and publish
-        if(has_joints)
-        {
+        if(control_joints)
             if(joint_pid.UpdatePID())
                 joint_command_publisher.publish(joint_pid.EffortCommand());
-        }
 
         ros::spinOnce();
         loop.sleep();

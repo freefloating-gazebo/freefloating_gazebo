@@ -74,7 +74,7 @@ private:
     Eigen::VectorXd body_command_;
     bool body_command_received_;
 
-
+    // -- joint control ----------------------------------------
     // model joint data
     std::vector<physics::JointPtr> joints_;
 

@@ -11,6 +11,7 @@ class FreeFloatingJointPids : public FreeFloatingPids
 
 public:
     void Init(const ros::NodeHandle&_node, ros::Duration&_dt);
+    unsigned int JointNb() {return joint_lower_.size();}
 
     // parse received body setpoint
     void SetpointCallBack(const sensor_msgs::JointStateConstPtr& _msg);

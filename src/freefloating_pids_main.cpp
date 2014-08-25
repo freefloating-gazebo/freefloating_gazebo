@@ -7,39 +7,49 @@ using std::endl;
 
 int main(int argc, char ** argv)
 {
-    // wait for params
-    sleep(5);
 
     // init ROS node
     ros::init(argc, argv, "freefloating_pid_control");
     ros::NodeHandle rosnode;
-    ros::NodeHandle pid_node(rosnode, "controllers");
+    ros::NodeHandle control_node(rosnode, "controllers");
+
+    // wait for body or joint param
+    bool control_body = false;
+    bool control_joints = false;
+    while(!(control_body || control_joints))
+    {
+        sleep(5);
+        control_body = control_node.hasParam("config/body");
+        control_joints = control_node.hasParam("config/joints/name");
+    }
+
 
     // -- Parse body data if needed ---------
 
     // body setpoint and state topics
-    std::string body_setpoint_topic, body_state_topic = "body_state";
+    std::string body_setpoint_topic, body_state_topic, body_command_topic;
     std::vector<std::string> controlled_axes;
-    bool control_body = false;
-    ROS_INFO("Init PID control for %s", rosnode.getNamespace().c_str());
-    if(pid_node.hasParam("config/body"))
+
+    if(control_body)
     {
         control_body = true;
-        pid_node.param("config/body/setpoint", body_setpoint_topic, std::string("body_setpoint"));
-        pid_node.param("config/body/state", body_state_topic, std::string("body_state"));
+        control_node.param("config/body/setpoint", body_setpoint_topic, std::string("body_setpoint"));
+        control_node.param("config/body/state", body_state_topic, std::string("body_state"));
+        control_node.param("config/body/command", body_command_topic, std::string("body_command"));
         // controlled body axes
-        pid_node.getParam("config/body/axes", controlled_axes);
+        control_node.getParam("config/body/axes", controlled_axes);
     }
 
     // -- Parse joint data if needed ---------
-    std::string joint_setpoint_topic, joint_state_topic;
-    bool control_joints = false;
-    if(pid_node.hasParam("config/joints/name"))
+    std::string joint_setpoint_topic, joint_state_topic, joint_command_topic;
+    if(control_joints)
     {
         control_joints = true;
         // joint setpoint and state topics
-        pid_node.param("config/joints/setpoint", joint_setpoint_topic, std::string("joint_setpoint"));
-        pid_node.param("config/joints/state", joint_state_topic, std::string("joint_states"));
+        control_node.param("config/joints/setpoint", joint_setpoint_topic, std::string("joint_setpoint"));
+        control_node.param("config/joints/state", joint_state_topic, std::string("joint_states"));
+        control_node.param("config/joints/command", joint_command_topic, std::string("joint_command"));
+        cout << "PID node, joint_state_topic=" << joint_state_topic << endl;
     }
     // -- end parsing parameter server
 
@@ -56,7 +66,7 @@ int main(int argc, char ** argv)
     ros::Publisher body_command_publisher;
     if(control_body)
     {
-        body_pid.Init(pid_node, dt, controlled_axes);
+        body_pid.Init(control_node, dt, controlled_axes);
 
         // setpoint
         body_setpoint_subscriber =
@@ -66,7 +76,7 @@ int main(int argc, char ** argv)
                 rosnode.subscribe(body_state_topic, 1, &FreeFloatingBodyPids::MeasureCallBack, &body_pid);
         // command
         body_command_publisher =
-                rosnode.advertise<geometry_msgs::Wrench>("body_command", 1);
+                rosnode.advertise<geometry_msgs::Wrench>(body_command_topic, 1);
     }
 
     // -- Init joints ------------------
@@ -78,7 +88,7 @@ int main(int argc, char ** argv)
     if(control_joints)
     {
         // pid
-        joint_pid.Init(pid_node, dt);
+        joint_pid.Init(control_node, dt);
 
         // setpoint
         joint_setpoint_subscriber = rosnode.subscribe(joint_setpoint_topic, 1, &FreeFloatingJointPids::SetpointCallBack, &joint_pid);
@@ -87,8 +97,14 @@ int main(int argc, char ** argv)
         joint_state_subscriber = rosnode.subscribe(joint_state_topic, 1, &FreeFloatingJointPids::MeasureCallBack, &joint_pid);
 
         // command
-        joint_command_publisher = rosnode.advertise<sensor_msgs::JointState>("joint_command", 1);
+        joint_command_publisher = rosnode.advertise<sensor_msgs::JointState>(joint_command_topic, 1);
     }
+
+    std::vector<std::string> joint_names;
+    if(control_joints)
+        control_node.getParam("config/joints/name", joint_names);
+
+    ROS_INFO("Init PID control for %s: %i body axes, %i joints", rosnode.getNamespace().c_str(), (int) controlled_axes.size(), (int) joint_names.size());
 
 
     while(ros::ok())

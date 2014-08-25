@@ -2,7 +2,7 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Wrench.h>
 #include <geometry_msgs/Twist.h>
-#include <gazebo.hh>
+#include <gazebo/gazebo.hh>
 
 #include <gazebo/physics/PhysicsIface.hh>
 #include <gazebo/physics/Model.hh>
@@ -48,14 +48,28 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     robot_namespace_ = model_->GetName();
     controller_is_running_ = true;
 
-    // body control
-    std::string body_command_topic = "body_command";
-    const bool control_body = _sdf->HasElement("bodyCommandTopic");
-    unsigned int i,j;
+    // register ROS node & time
+    rosnode_ = ros::NodeHandle(robot_namespace_);
+    ros::NodeHandle control_node(rosnode_, "controllers");
 
+    // check for body or joint param
+    bool control_body = false;
+    bool control_joints = false;
+
+    while(!(control_body || control_joints))
+    {
+        control_body = control_node.hasParam("config/body");
+        control_joints = control_node.hasParam("config/joints");
+    }
+
+    // body control
+    std::string body_command_topic, body_state_topic;
+    unsigned int i,j;
     if(control_body)
     {
-        body_command_topic = _sdf->Get<std::string>("bodyCommandTopic");
+        control_node.param("config/body/command", body_command_topic, std::string("body_command"));
+        control_node.param("config/body/state", body_state_topic, std::string("body_state"));
+
         if(_sdf->HasElement("link"))
             body_ = model_->GetLink(_sdf->Get<std::string>("link"));
         else
@@ -103,13 +117,12 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     }
 
     // joint control
-    const bool control_joints = (_sdf->HasElement("jointCommandTopic"));
-    std::string joint_command_topic = "joint_command";
+    std::string joint_command_topic, joint_state_topic;
     if(control_joints)
-        joint_command_topic = _sdf->Get<std::string>("jointCommandTopic");
-
-    // register ROS node & time
-    rosnode_ = ros::NodeHandle(robot_namespace_);
+    {
+        control_node.param("config/joints/command", joint_command_topic, std::string("joint_command"));
+        control_node.param("config/joints/state", joint_state_topic, std::string("joint_state"));
+    }
 
     // initialize subscriber to joint commands
     ros::SubscribeOptions ops = ros::SubscribeOptions::create<sensor_msgs::JointState>(
@@ -130,9 +143,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     // init service
     //switch_service_ = rosnode_.advertiseService<std_srvs::EmptyRequest, std_srvs::EmptyResponse>("switch", &FreeFloatingControlPlugin::SwitchService, this);
 
-
-    // push control data to parameter server
-    ros::NodeHandle control_node(rosnode_, "controllers");
+    // push control data to parameter server    
     char param[FILENAME_MAX];
     if(control_body)
     {
@@ -164,7 +175,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
                 }
             }
 
-            // initialize thruster use publisher
+            // initialize publisher to thruster_use
             thruster_use_.data.resize(thruster_max_command_.size());
             thruster_use_publisher_ = rosnode_.advertise<std_msgs::Float32MultiArray>("thruster_use", 1);
 
@@ -196,7 +207,6 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
         for(i=0;i<model_->GetJointCount();++i)
         {
-
             joint = model_->GetJoints()[i];
             name = joint->GetName();
 
@@ -226,8 +236,8 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         control_node.setParam("config/joints/lower", joint_min);
         control_node.setParam("config/joints/upper", joint_max);
 
-        // setup joint_states publisher
-        joint_state_publisher_ = rosnode_.advertise<sensor_msgs::JointState>("joint_states", 1);
+        // setup joint_states publisher if needed
+        joint_state_publisher_ = rosnode_.advertise<sensor_msgs::JointState>(joint_state_topic, 1);
         joint_states_.name = joint_names;
         joint_states_.position.resize(joints_.size());
         joint_states_.velocity.resize(joints_.size());

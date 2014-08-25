@@ -6,8 +6,8 @@
 #include <freefloating_gazebo/BodySetpoint.h>
 #include <control_toolbox/pid.h>
 #include <nav_msgs/Odometry.h>
-#include <Eigen/Core>
-#include <Eigen/Geometry>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Geometry>
 #include <freefloating_gazebo/freefloating_pids.h>
 
 class FreeFloatingBodyPids : public FreeFloatingPids

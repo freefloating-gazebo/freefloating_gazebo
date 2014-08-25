@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(gazebo REQUIRED)
+find_package(Eigen3)
 
 add_message_files(
     FILES
@@ -29,8 +30,15 @@ catkin_package(
     rostime
 )
 
+message("****** Eigen3 *****")
+message("${EIGEN3_INCLUDE_DIRS}")
+
+message("****** Gazebo *****")
+message("${GAZEBO_INCLUDE_DIRS}")
+
 link_directories(${GAZEBO_LIBRARY_DIRS})
-include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS})
+include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
+add_definitions(${EIGEN3_DEFINITIONS})
 
 # world plugin to simulate buoyancy and viscous force
 add_library(freefloating_gazebo_fluid src/freefloating_gazebo_fluid.cpp include/freefloating_gazebo/freefloating_gazebo_fluid.h)

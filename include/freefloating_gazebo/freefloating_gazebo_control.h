@@ -11,8 +11,8 @@
 #include <gazebo_msgs/ModelState.h>
 #include <std_msgs/Float32MultiArray.h>
 #include <std_srvs/Empty.h>
-#include <Eigen/Core>
-#include <Eigen/SVD>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/SVD>
 
 namespace gazebo
 {

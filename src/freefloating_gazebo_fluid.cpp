@@ -2,7 +2,7 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Wrench.h>
 #include <geometry_msgs/Twist.h>
-#include <gazebo.hh>
+#include <gazebo/gazebo.hh>
 
 #include <gazebo/physics/PhysicsIface.hh>
 #include <gazebo/physics/Model.hh>

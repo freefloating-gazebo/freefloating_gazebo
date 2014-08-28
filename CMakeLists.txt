@@ -30,11 +30,6 @@ catkin_package(
     rostime
 )
 
-message("****** Eigen3 *****")
-message("${EIGEN3_INCLUDE_DIRS}")
-
-message("****** Gazebo *****")
-message("${GAZEBO_INCLUDE_DIRS}")
 
 link_directories(${GAZEBO_LIBRARY_DIRS})
 include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})

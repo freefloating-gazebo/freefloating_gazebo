@@ -62,7 +62,8 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         control_joints = control_node.hasParam("config/joints");
     }
 
-    // body control
+    // *** SET UP BODY CONTROL
+    char param[FILENAME_MAX];
     std::string body_command_topic, body_state_topic;
     unsigned int i,j;
     if(control_body)
@@ -114,39 +115,18 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
             ComputePseudoInverse(thruster_map_, thruster_inverse_map_);
         }
         body_command_.resize(6);
-    }
 
-    // joint control
-    std::string joint_command_topic, joint_state_topic;
-    if(control_joints)
-    {
-        control_node.param("config/joints/command", joint_command_topic, std::string("joint_command"));
-        control_node.param("config/joints/state", joint_state_topic, std::string("joint_state"));
-    }
+        // initialize subscriber to body commands
+        ros::SubscribeOptions ops = ros::SubscribeOptions::create<geometry_msgs::Wrench>(
+                    body_command_topic, 1,
+                    boost::bind(&FreeFloatingControlPlugin::BodyCommandCallBack, this, _1),
+                    ros::VoidPtr(), &callback_queue_);
+        body_command_subscriber_ = rosnode_.subscribe(ops);
+        body_command_received_ = false;
 
-    // initialize subscriber to joint commands
-    ros::SubscribeOptions ops = ros::SubscribeOptions::create<sensor_msgs::JointState>(
-                joint_command_topic, 1,
-                boost::bind(&FreeFloatingControlPlugin::JointCommandCallBack, this, _1),
-                ros::VoidPtr(), &callback_queue_);
-    joint_command_subscriber_ = rosnode_.subscribe(ops);
-    joint_command_received_ = false;
 
-    // initialize subscriber to body commands
-    ops = ros::SubscribeOptions::create<geometry_msgs::Wrench>(
-                body_command_topic, 1,
-                boost::bind(&FreeFloatingControlPlugin::BodyCommandCallBack, this, _1),
-                ros::VoidPtr(), &callback_queue_);
-    body_command_subscriber_ = rosnode_.subscribe(ops);
-    body_command_received_ = false;
 
-    // init service
-    //switch_service_ = rosnode_.advertiseService<std_srvs::EmptyRequest, std_srvs::EmptyResponse>("switch", &FreeFloatingControlPlugin::SwitchService, this);
-
-    // push control data to parameter server    
-    char param[FILENAME_MAX];
-    if(control_body)
-    {
+        // push control data to parameter server
         control_node.setParam("config/body/link", body_->GetName());
 
         std::string axe[] = {"x", "y", "z", "roll", "pitch", "yaw"};
@@ -178,8 +158,6 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
             // initialize publisher to thruster_use
             thruster_use_.data.resize(thruster_max_command_.size());
             thruster_use_publisher_ = rosnode_.advertise<std_msgs::Float32MultiArray>("thruster_use", 1);
-
-
         }
         else
         {
@@ -189,13 +167,28 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         }
         // push controlled axes
         control_node.setParam("config/body/axes", controlled_axes);
+
     }
+    // *** END BODY CONTROL
 
-
-    // push joint limits and setup joint states
+    // *** JOINT CONTROL
     joints_.clear();
     if(control_joints && model_->GetJointCount() != 0)
     {
+
+        std::string joint_command_topic, joint_state_topic;
+        control_node.param("config/joints/command", joint_command_topic, std::string("joint_command"));
+        control_node.param("config/joints/state", joint_state_topic, std::string("joint_state"));
+
+        // initialize subscriber to joint commands
+        ros::SubscribeOptions ops = ros::SubscribeOptions::create<sensor_msgs::JointState>(
+                    joint_command_topic, 1,
+                    boost::bind(&FreeFloatingControlPlugin::JointCommandCallBack, this, _1),
+                    ros::VoidPtr(), &callback_queue_);
+        joint_command_subscriber_ = rosnode_.subscribe(ops);
+        joint_command_received_ = false;
+
+        // push joint limits and setup joint states
         std::vector<std::string> joint_names;
         std::vector<double> joint_min, joint_max;
         std::string name;
@@ -236,12 +229,17 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         control_node.setParam("config/joints/lower", joint_min);
         control_node.setParam("config/joints/upper", joint_max);
 
-        // setup joint_states publisher if needed
+        // setup joint_states publisher
         joint_state_publisher_ = rosnode_.advertise<sensor_msgs::JointState>(joint_state_topic, 1);
         joint_states_.name = joint_names;
         joint_states_.position.resize(joints_.size());
         joint_states_.velocity.resize(joints_.size());
     }
+    // *** END JOINT CONTROL
+
+
+    // set up switch service between position and velocity control
+    //switch_service_ = rosnode_.advertiseService<std_srvs::EmptyRequest, std_srvs::EmptyResponse>("switch", &FreeFloatingControlPlugin::SwitchService, this);
 
 
     // Register plugin update
@@ -296,8 +294,6 @@ void FreeFloatingControlPlugin::Update()
         }
         joint_state_publisher_.publish(joint_states_);
     }
-
-
 }
 
 

@@ -49,7 +49,7 @@ int main(int argc, char ** argv)
         control_node.param("config/joints/setpoint", joint_setpoint_topic, std::string("joint_setpoint"));
         control_node.param("config/joints/state", joint_state_topic, std::string("joint_states"));
         control_node.param("config/joints/command", joint_command_topic, std::string("joint_command"));
-        cout << "PID node, joint_state_topic=" << joint_state_topic << endl;
+        cout << "PID node, joint_state_topic: " << joint_state_topic << endl;
     }
     // -- end parsing parameter server
 

@@ -41,7 +41,7 @@ bool FreeFloatingControlPlugin::SwitchService(std_srvs::EmptyRequest &req, std_s
 
 void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
-    ROS_INFO("Loading freefloating_control plugin for %s", _model->GetName().c_str());
+    ROS_INFO("FreeFloating Control Plugin for %s", _model->GetName().c_str());
 
     // get model and name
     model_ = _model;
@@ -246,7 +246,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     update_event_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&FreeFloatingControlPlugin::Update, this));
 
     ros::spinOnce();
-    ROS_INFO("Loaded freefloating_control plugin for %s.", _model->GetName().c_str());
+    ROS_INFO("Started FreeFloating Control Plugin for %s.", _model->GetName().c_str());
 }
 
 void FreeFloatingControlPlugin::Update()
@@ -256,7 +256,6 @@ void FreeFloatingControlPlugin::Update()
 
     if(controller_is_running_)
     {
-
         // deal with joint control
         if(joint_command_received_)
         {

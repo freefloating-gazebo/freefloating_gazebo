@@ -286,6 +286,7 @@ void FreeFloatingControlPlugin::Update()
     // publish joint states anyway
     if(joints_.size() != 0)
     {
+        joint_states_.header.stamp = ros::Time::now();
         for(unsigned int i=0;i<joints_.size();++i)
         {
             joint_states_.position[i] = joints_[i]->GetAngle(0).Radian();

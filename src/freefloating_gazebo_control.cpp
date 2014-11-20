@@ -53,20 +53,20 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     ros::NodeHandle control_node(rosnode_, "controllers");
 
     // check for body or joint param
-    bool control_body = false;
-    bool control_joints = false;
+    control_body_ = false;
+    control_joints_ = false;
 
-    while(!(control_body || control_joints))
+    while(!(control_body_ || control_joints_))
     {
-        control_body = control_node.hasParam("config/body");
-        control_joints = control_node.hasParam("config/joints");
+        control_body_ = control_node.hasParam("config/body");
+        control_joints_ = control_node.hasParam("config/joints");
     }
 
     // *** SET UP BODY CONTROL
     char param[FILENAME_MAX];
     std::string body_command_topic, body_state_topic;
     unsigned int i,j;
-    if(control_body)
+    if(control_body_)
     {
         control_node.param("config/body/command", body_command_topic, std::string("body_command"));
         control_node.param("config/body/state", body_state_topic, std::string("body_state"));
@@ -124,8 +124,6 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         body_command_subscriber_ = rosnode_.subscribe(ops);
         body_command_received_ = false;
 
-
-
         // push control data to parameter server
         control_node.setParam("config/body/link", body_->GetName());
 
@@ -173,7 +171,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
     // *** JOINT CONTROL
     joints_.clear();
-    if(control_joints && model_->GetJointCount() != 0)
+    if(control_joints_ && model_->GetJointCount() != 0)
     {
 
         std::string joint_command_topic, joint_state_topic;
@@ -257,7 +255,7 @@ void FreeFloatingControlPlugin::Update()
     if(controller_is_running_)
     {
         // deal with joint control
-        if(joint_command_received_)
+        if(control_joints_ && joint_command_received_)
         {
             physics::JointPtr joint;
             for(unsigned int i=0;i<joints_.size();++i)
@@ -268,9 +266,8 @@ void FreeFloatingControlPlugin::Update()
         }
 
         // deal with body control
-        if(body_command_received_)
+        if(control_body_ && body_command_received_)
         {
-            //body_->AddRelativeForce(math::Vector3(body_command_(0), body_command_(1), body_command_(2)));
             // apply this wrench
             body_->AddForceAtWorldPosition(body_->GetWorldPose().rot.RotateVector(math::Vector3(body_command_(0), body_command_(1), body_command_(2))), body_->GetWorldCoGPose().pos);
 
@@ -316,6 +313,8 @@ void FreeFloatingControlPlugin::ComputePseudoInverse(const Eigen::MatrixXd &_M, 
 
 void FreeFloatingControlPlugin::BodyCommandCallBack(const geometry_msgs::WrenchConstPtr &_msg)
 {
+    if(!control_body_)
+        return;
     body_command_received_ = true;
 
     // store body command

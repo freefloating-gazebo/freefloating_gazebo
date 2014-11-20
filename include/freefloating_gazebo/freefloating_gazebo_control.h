@@ -37,6 +37,8 @@ private:
     // parse received joint command (joint states)
     void JointCommandCallBack(const sensor_msgs::JointStateConstPtr &_msg)
     {
+        if(!control_joints_)
+            return;
         // store received joint state
         joint_command_ = *_msg;
         joint_command_received_ = true;
@@ -66,6 +68,7 @@ private:
     Eigen::MatrixXd thruster_map_;
     Eigen::MatrixXd thruster_inverse_map_;
     std::vector<double> thruster_max_command_;
+    bool control_body_;
 
 
     // subscriber
@@ -77,6 +80,7 @@ private:
     // -- joint control ----------------------------------------
     // model joint data
     std::vector<physics::JointPtr> joints_;
+    bool control_joints_;
 
     // subscriber
     ros::Subscriber joint_command_subscriber_;

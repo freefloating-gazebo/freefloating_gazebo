@@ -60,6 +60,7 @@ private:
     event::ConnectionPtr update_event_;
     ros::ServiceServer switch_service_;
     bool controller_is_running_;
+    double update_T_;
 
     // -- body control ----------------------------------------
     // model body data
@@ -93,6 +94,7 @@ private:
     // publisher to joint state
     ros::Publisher joint_state_publisher_;
     sensor_msgs::JointState joint_states_;
+    double t_prev_;
 
     // publisher to thruster percent use
     ros::Publisher thruster_use_publisher_;

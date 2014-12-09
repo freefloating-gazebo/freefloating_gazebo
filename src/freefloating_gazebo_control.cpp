@@ -41,8 +41,6 @@ bool FreeFloatingControlPlugin::SwitchService(std_srvs::EmptyRequest &req, std_s
 
 void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
-    ROS_INFO("FreeFloating Control Plugin for %s", _model->GetName().c_str());
-
     // get model and name
     model_ = _model;
     robot_namespace_ = model_->GetName();
@@ -51,6 +49,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     // register ROS node & time
     rosnode_ = ros::NodeHandle(robot_namespace_);
     ros::NodeHandle control_node(rosnode_, "controllers");
+    t_prev_= 0;
 
     // check for body or joint param
     control_body_ = false;
@@ -239,6 +238,11 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     // set up switch service between position and velocity control
     //switch_service_ = rosnode_.advertiseService<std_srvs::EmptyRequest, std_srvs::EmptyResponse>("switch", &FreeFloatingControlPlugin::SwitchService, this);
 
+    // store update rate
+    if(_sdf->HasElement("updateRate"))
+        update_T_ = 1./_sdf->Get<double>("updateRate");
+    else
+        update_T_ = 0;
 
     // Register plugin update
     update_event_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&FreeFloatingControlPlugin::Update, this));
@@ -261,7 +265,8 @@ void FreeFloatingControlPlugin::Update()
             for(unsigned int i=0;i<joints_.size();++i)
             {
                 joint = joints_[i];
-                joint->SetForce(0,joint_command_.effort[i] - joint->GetDamping(0) * joint->GetVelocity(0));
+                //joint->SetForce(0,joint_command_.effort[i] - joint->GetDamping(0) * joint->GetVelocity(0));
+                joint->SetForce(0,joint_command_.effort[i]);
             }
         }
 
@@ -281,9 +286,12 @@ void FreeFloatingControlPlugin::Update()
     }
 
     // publish joint states anyway
-    if(joints_.size() != 0)
+    double t = ros::Time::now().toSec();
+    if((t-t_prev_) > update_T_ && joints_.size() != 0)
     {
+        t_prev_ = t;
         joint_states_.header.stamp = ros::Time::now();
+
         for(unsigned int i=0;i<joints_.size();++i)
         {
             joint_states_.position[i] = joints_[i]->GetAngle(0).Radian();

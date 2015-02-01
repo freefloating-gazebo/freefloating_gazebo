@@ -170,6 +170,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
     // *** JOINT CONTROL
     joints_.clear();
+
     if(control_joints_ && model_->GetJointCount() != 0)
     {
 

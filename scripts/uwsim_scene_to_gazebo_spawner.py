@@ -212,7 +212,13 @@ def process_vehicles(vehicles, datapath):
             # create uwsim urdf only if mesh in gazebo urdf, otherwise trust the user 
             for mesh in meshes:
                 mesh_file = resource_retriever.get(substitution_args.resolve_args(mesh.get('filename'))).url[7:]
+                # get uwsim relative path for mesh
                 mesh_file, datadir = abspath_to_uwsim(mesh_file, datapath)
+                # if mesh in dae, try to find corresponding osg
+                if '.dae' in mesh_file:
+                    mesh_osg, datadir_osg = uwsim_to_abspath(mesh_file.replace('.dae','.osg'), datapath)
+                    if datadir_osg != '':
+                        mesh_file, datadir = abspath_to_uwsim(mesh_osg, datapath)
                 if datadir == '':
                     rospy.loginfo('Could not find relative path for ' + mesh_file + ' in ' + gazebo_model_file)
                     sys.exit(1)

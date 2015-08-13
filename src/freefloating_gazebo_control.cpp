@@ -41,10 +41,14 @@ bool FreeFloatingControlPlugin::SwitchService(std_srvs::EmptyRequest &req, std_s
 
 void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
+    ROS_INFO("Loading FreeFloatingControlPlugin into Gazebo ");
+
     // get model and name
     model_ = _model;
     robot_namespace_ = model_->GetName();
     controller_is_running_ = true;
+
+    ROS_INFO("Registering ROS Node namespace/controllers");
 
     // register ROS node & time
     rosnode_ = ros::NodeHandle(robot_namespace_);
@@ -55,11 +59,33 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     control_body_ = false;
     control_joints_ = false;
 
-    while(!(control_body_ || control_joints_))
+    ROS_INFO("Checking for body and joints control");
+
+    if (!control_body_)
+    {
+        control_body_ = control_node.hasParam("config/body");
+    }
+    else
+    {
+        ROS_INFO("FreeFloatingGazebo: no body configuration specified. See https://github.com/freefloating_gazebo_demo/config/");
+    }
+
+    if (!control_joints_)
+    {
+       control_joints_ = control_node.hasParam("config/joints");
+    }
+    else
+    {
+       ROS_INFO("FreeFloatingGazebo: no joint configuration specified. See See https://github.com/freefloating_gazebo_demo/config/");
+    }
+
+    /*while(!(control_body_ || control_joints_))
     {
         control_body_ = control_node.hasParam("config/body");
         control_joints_ = control_node.hasParam("config/joints");
-    }
+    }*/
+
+    ROS_INFO("Setting up body control");
 
     // *** SET UP BODY CONTROL
     char param[FILENAME_MAX];
@@ -74,6 +100,8 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
             body_ = model_->GetLink(_sdf->Get<std::string>("link"));
         else
             body_ = model_->GetLinks()[0];
+
+        ROS_INFO("Parse thruster elements");
 
         // parse thruster elements
         std::vector<double> map_elem;
@@ -103,6 +131,8 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
             }
             sdf_element = sdf_element->GetNextElement();
         }
+        ROS_INFO("Build thruster map");
+
         // build thruster map from map elements
         thruster_nb_ = map_elem.size()/6;
         if(thruster_nb_ != 0)
@@ -167,6 +197,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
     }
     // *** END BODY CONTROL
+    ROS_INFO("Registered body control");
 
     // *** JOINT CONTROL
     joints_.clear();
@@ -245,6 +276,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     else
         update_T_ = 0;
 
+    ROS_INFO("Trying to register freefloating control plugin..");
     // Register plugin update
     update_event_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&FreeFloatingControlPlugin::Update, this));
 

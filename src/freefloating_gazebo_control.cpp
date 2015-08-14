@@ -54,6 +54,8 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     rosnode_ = ros::NodeHandle(robot_namespace_);
     ros::NodeHandle control_node(rosnode_, "controllers");
     t_prev_= 0;
+    std::string namespace_ = "controllers";
+    
 
     // check for body or joint param
     control_body_ = false;
@@ -61,22 +63,15 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
     ROS_INFO("Checking for body and joints control");
 
-    if (!control_body_)
+    while (!control_body_)
     {
-        control_body_ = control_node.hasParam("config/body");
-    }
-    else
-    {
-        ROS_INFO("FreeFloatingGazebo: no body configuration specified. See https://github.com/freefloating_gazebo_demo/config/");
+        ROS_INFO("Controlling body with thrusters");
+        control_body_ = control_node.hasParam("/controllers/config/body");
     }
 
     if (!control_joints_)
     {
        control_joints_ = control_node.hasParam("config/joints");
-    }
-    else
-    {
-       ROS_INFO("FreeFloatingGazebo: no joint configuration specified. See See https://github.com/freefloating_gazebo_demo/config/");
     }
 
     /*while(!(control_body_ || control_joints_))
@@ -85,7 +80,6 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         control_joints_ = control_node.hasParam("config/joints");
     }*/
 
-    ROS_INFO("Setting up body control");
 
     // *** SET UP BODY CONTROL
     char param[FILENAME_MAX];
@@ -93,6 +87,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     unsigned int i,j;
     if(control_body_)
     {
+        ROS_INFO("Setting up body control");
         control_node.param("config/body/command", body_command_topic, std::string("body_command"));
         control_node.param("config/body/state", body_state_topic, std::string("body_state"));
 
@@ -314,6 +309,7 @@ void FreeFloatingControlPlugin::Update()
             body_->AddRelativeTorque(math::Vector3(body_command_(3), body_command_(4), body_command_(5)));
 
             // publish thruster use
+            ROS_INFO("Thrusters set");
             thruster_use_publisher_.publish(thruster_use_);
         }
     }

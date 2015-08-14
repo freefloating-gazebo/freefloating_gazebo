@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   control_toolbox
   rostime
   message_generation
+  roscpp
 )
 
 find_package(gazebo REQUIRED)
@@ -29,6 +30,7 @@ catkin_package(
     gazebo_ros
     control_toolbox
     rostime
+    roscpp
 )
 
 link_directories(${GAZEBO_LIBRARY_DIRS})
@@ -44,6 +46,11 @@ add_dependencies(freefloating_gazebo_fluid freefloating_gazebo_generate_messages
 add_library(freefloating_gazebo_control src/freefloating_gazebo_control.cpp include/freefloating_gazebo/freefloating_gazebo_control.h)
 target_link_libraries(freefloating_gazebo_control ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 add_dependencies(freefloating_gazebo_control freefloating_gazebo_generate_messages_cpp)
+
+# demo node to test control of bot
+add_executable(demo_control src/freefloating_gazebo_demo.cpp)
+target_link_libraries(demo_control ${catkin_LIBRARIES})
+add_dependencies(demo_control freefloating_gazebo_generate_messages_cpp)
 
 # node to perform PID control for body (thrusters) and joints
 add_executable(pid_control src/freefloating_pids_main.cpp

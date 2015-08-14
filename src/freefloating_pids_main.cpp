@@ -7,7 +7,8 @@ using std::endl;
 
 int main(int argc, char ** argv)
 {
-
+    ROS_INFO("Initializing PID Loop for AUV robot.");
+    ROS_INFO("Position control of the robot is available at the setpoint in body/setpoint");
     // init ROS node
     ros::init(argc, argv, "freefloating_pid_control");
     ros::NodeHandle rosnode;
@@ -16,12 +17,15 @@ int main(int argc, char ** argv)
     // wait for body or joint param
     bool control_body = false;
     bool control_joints = false;
-    while(!(control_body || control_joints))
+    while(!control_body && !control_joints)
     {
         sleep(5);
-        control_body = control_node.hasParam("config/body");
-        control_joints = control_node.hasParam("config/joints/name");
+        control_body = control_node.hasParam("/controllers/config/body");
+        // no joints to control for this robot so ignore
+        //control_joints = control_node.hasParam("/auv_robot/controllers/config/joints/name");
     }
+
+    ROS_INFO("PID Loop enabled for body detected");
 
 
     // -- Parse body data if needed ---------
@@ -33,11 +37,11 @@ int main(int argc, char ** argv)
     if(control_body)
     {
         control_body = true;
-        control_node.param("config/body/setpoint", body_setpoint_topic, std::string("body_setpoint"));
-        control_node.param("config/body/state", body_state_topic, std::string("body_state"));
-        control_node.param("config/body/command", body_command_topic, std::string("body_command"));
+        control_node.param("/controllers/config/body/setpoint", body_setpoint_topic, std::string("body_setpoint"));
+        control_node.param("/controllers/config/body/state", body_state_topic, std::string("body_state"));
+        control_node.param("/controllers/config/body/command", body_command_topic, std::string("body_command"));
         // controlled body axes
-        control_node.getParam("config/body/axes", controlled_axes);
+        control_node.getParam("/auv_robot/controllers/config/body/axes", controlled_axes);
     }
 
     // -- Parse joint data if needed ---------
@@ -78,6 +82,8 @@ int main(int argc, char ** argv)
         body_command_publisher =
                 rosnode.advertise<geometry_msgs::Wrench>(body_command_topic, 1);
     }
+
+    ROS_INFO("Body control has been initialized");
 
     // -- Init joints ------------------
     FreeFloatingJointPids joint_pid;

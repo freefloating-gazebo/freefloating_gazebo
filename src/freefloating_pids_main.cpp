@@ -23,6 +23,7 @@ int main(int argc, char ** argv)
         control_body = control_node.hasParam("/controllers/config/body");
         // no joints to control for this robot so ignore
         //control_joints = control_node.hasParam("/auv_robot/controllers/config/joints/name");
+        ROS_INFO("Control_body = True");
     }
 
     ROS_INFO("PID Loop enabled for body detected");
@@ -34,12 +35,15 @@ int main(int argc, char ** argv)
     std::string body_setpoint_topic, body_state_topic, body_command_topic;
     std::vector<std::string> controlled_axes;
 
+    body_command_topic = "/auv_robot/body_command";
+
     if(control_body)
     {
         control_body = true;
         control_node.param("/controllers/config/body/setpoint", body_setpoint_topic, std::string("body_setpoint"));
         control_node.param("/controllers/config/body/state", body_state_topic, std::string("body_state"));
         control_node.param("/controllers/config/body/command", body_command_topic, std::string("body_command"));
+        ROS_INFO("Finished setting parameters");
         // controlled body axes
         control_node.getParam("/auv_robot/controllers/config/body/axes", controlled_axes);
     }
@@ -82,9 +86,9 @@ int main(int argc, char ** argv)
         // command
         ROS_INFO("Subscribed to measure");
         body_command_publisher =
-                rosnode.advertise<geometry_msgs::Wrench>(body_command_topic, 1);
-        ROS_INFO("Now publishing commands to body command");
-    }
+                rosnode.advertise<geometry_msgs::Wrench>("/auv_robot/body_command", 1);
+        ROS_INFO("Now publishing commands to body command at topic auv_robot/body_command");
+    } 
 
     ROS_INFO("Body control has been initialized");
 

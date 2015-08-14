@@ -28,8 +28,8 @@ int main(int argc, char ** argv)
     while (ros::ok())
     {
 
-    ROS_INFO("Publishing body_setpoint_");
-    current_publisher.publish(body_setpoint_);
+         ROS_INFO("Publishing body_setpoint_");
+         current_publisher.publish(body_setpoint_);
 
     }
 }

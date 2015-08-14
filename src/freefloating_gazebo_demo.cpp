@@ -25,7 +25,11 @@ int main(int argc, char ** argv)
     body_setpoint_.pose.orientation.w = 0;
 
     ros::Publisher current_publisher = ros_node.advertise<freefloating_gazebo::BodySetpoint>("/body_setpoint", 1);  
+    while (ros::ok())
+    {
 
     ROS_INFO("Publishing body_setpoint_");
     current_publisher.publish(body_setpoint_);
+
+    }
 }

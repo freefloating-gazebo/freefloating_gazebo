@@ -76,11 +76,14 @@ int main(int argc, char ** argv)
         body_setpoint_subscriber =
                 rosnode.subscribe(body_setpoint_topic, 1, &FreeFloatingBodyPids::SetpointCallBack, &body_pid);
         // measure
+        ROS_INFO("Subscribed to body_setpoint");
         body_state_subscriber =
                 rosnode.subscribe(body_state_topic, 1, &FreeFloatingBodyPids::MeasureCallBack, &body_pid);
         // command
+        ROS_INFO("Subscribed to measure");
         body_command_publisher =
                 rosnode.advertise<geometry_msgs::Wrench>(body_command_topic, 1);
+        ROS_INFO("Now publishing commands to body command");
     }
 
     ROS_INFO("Body control has been initialized");
@@ -117,8 +120,13 @@ int main(int argc, char ** argv)
     {
         // update body and publish
         if(control_body)
-            if(body_pid.UpdatePID())
+        {
+	   if(body_pid.UpdatePID())
+           {
+                ROS_INFO("Publishing body command, updating position");
                 body_command_publisher.publish(body_pid.WrenchCommand());
+           } else { ROS_INFO("Failed to updatePID"); }
+       } else { ROS_INFO("Failed to control body"); }
 
         // update joints and publish
         if(control_joints)

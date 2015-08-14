@@ -7,6 +7,9 @@ using std::string;
 
 void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt, const std::vector<std::string>&_controlled_axes)
 {
+
+    ROS_INFO("initializing freefloatingbodypid object");
+
     pid_node_ = _node;
     // init dt from rate
     dt_ = _dt;
@@ -66,6 +69,7 @@ void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt,
             break;
         }
 
+        ROS_INFO("Initializing position and velocity PIDs");
         InitPID(position_pids_[i].pid, ros::NodeHandle(_node, axes[j] + "/position"), use_dynamic_reconfig);
         InitPID(velocity_pids_[i].pid, ros::NodeHandle(_node, axes[j] + "/velocity"), use_dynamic_reconfig);
 
@@ -73,17 +77,17 @@ void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt,
     }
 
     InitSwitchServices("body");
-
+    ROS_INFO("initialized switch services");
 }
-
-
 
 bool FreeFloatingBodyPids::UpdatePID()
 {
     if(setpoint_received_)
     {
+        ROS_INFO("Setpoint Received.. updating position");
         if(control_type_ == POSITION_CONTROL)
         {
+            ROS_INFO("Updating for position control");
             Eigen::Matrix3d world_to_body = pose_ang_measure_inv_.toRotationMatrix();
             // express pose error in the body frame
             pose_lin_error_ = world_to_body * (pose_lin_setpoint_ - pose_lin_measure_);
@@ -123,6 +127,7 @@ bool FreeFloatingBodyPids::UpdatePID()
             velocity_lin_error_ =  velocity_lin_setpoint_ - velocity_lin_measure_;
             velocity_ang_error_ =  velocity_ang_setpoint_ - velocity_ang_measure_;
 
+            ROS_INFO("Updating velocity PID");
             // writes the wrench command
             UpdateVelocityPID();
 
@@ -136,7 +141,7 @@ bool FreeFloatingBodyPids::UpdatePID()
 void FreeFloatingBodyPids::SetpointCallBack(const freefloating_gazebo::BodySetpointConstPtr &_msg)
 {
     setpoint_received_ = true;
-
+    ROS_INFO("setpoint received");
   //  if(_msg->reference_frame == "velocity")
     {
     //    control_type_ = VELOCITY_CONTROL;

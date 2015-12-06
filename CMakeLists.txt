@@ -10,7 +10,10 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(gazebo REQUIRED)
-find_package(Eigen3)
+
+find_package(PkgConfig)
+pkg_search_module(Eigen3 REQUIRED eigen3)
+
 
 add_message_files(
     FILES

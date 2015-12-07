@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
    <name>freefloating_gazebo</name>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <description>A plugin to simulate underwater vehicles in Gazebo and visualise with UWsim.</description>
   <maintainer email="olivier_kermorgant@yahoo.fr">Olivier Kermorgant</maintainer>
 
@@ -13,11 +13,13 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <build_depend>cmake_modules</build_depend>
   <build_depend>urdf</build_depend>
   <build_depend>gazebo_ros</build_depend>
   <build_depend>control_toolbox</build_depend>
   <build_depend>rostime</build_depend>
   <build_depend>message_generation</build_depend>
+
   <run_depend>rostime</run_depend>
   <run_depend>control_toolbox</run_depend>
   <run_depend>gazebo_ros</run_depend>

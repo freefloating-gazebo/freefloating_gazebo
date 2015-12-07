@@ -32,8 +32,8 @@ catkin_package(
 )
 
 
-include_directories(SYSTEM ${EIGEN_INCLUDE_DIRS})
-include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
+include_directories(SYSTEM ${EIGEN_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS})
 link_directories(${GAZEBO_LIBRARY_DIRS})
 
 

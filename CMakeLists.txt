@@ -10,8 +10,15 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(gazebo REQUIRED)
-find_package(Eigen3 REQUIRED)
-
+find_package(Eigen3)
+if(NOT EIGEN3_FOUND)
+  # Fallback to cmake_modules
+  find_package(cmake_modules REQUIRED)
+  find_package(Eigen REQUIRED)
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS})
+else()
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
+endif()
 
 add_message_files(
     FILES
@@ -24,7 +31,7 @@ generate_messages(
     )
 
 catkin_package(
- INCLUDE_DIRS include ${EIGEN_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS}
+ INCLUDE_DIRS include
  LIBRARIES ${PROJECT_NAME} 
  DEPENDS
     gazebo_ros
@@ -32,11 +39,8 @@ catkin_package(
     rostime
 )
 
-
-include_directories(SYSTEM ${EIGEN_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS})
-include_directories(include ${catkin_INCLUDE_DIRS})
 link_directories(${GAZEBO_LIBRARY_DIRS})
-
+include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
 
 # world plugin to simulate buoyancy and viscous force
 add_library(freefloating_gazebo_fluid src/freefloating_gazebo_fluid.cpp include/freefloating_gazebo/freefloating_gazebo_fluid.h)
@@ -56,9 +60,4 @@ src/freefloating_pids_joint.cpp include/freefloating_gazebo/freefloating_pids_jo
 target_link_libraries(pid_control ${catkin_LIBRARIES})
 add_dependencies(pid_control freefloating_gazebo_generate_messages_cpp)
 
-
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
-install(TARGETS pid_control freefloating_gazebo_control freefloating_gazebo_fluid
-  DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 

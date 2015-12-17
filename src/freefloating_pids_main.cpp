@@ -106,7 +106,6 @@ int main(int argc, char ** argv)
 
     ROS_INFO("Init PID control for %s: %i body axes, %i joints", rosnode.getNamespace().c_str(), (int) controlled_axes.size(), (int) joint_names.size());
 
-
     while(ros::ok())
     {
         // update body and publish

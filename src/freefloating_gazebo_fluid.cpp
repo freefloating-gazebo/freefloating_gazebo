@@ -118,7 +118,7 @@ void FreeFloatingFluidPlugin::Update()
 
     // here buoy_links is up-to-date with the links that are subject to buoyancy, let's apply it
     physics::LinkPtr link;
-    math::Vector3 actual_force, cob_position, velocity_difference;
+    math::Vector3 actual_force, cob_position, velocity_difference, torque;
     double signed_distance_to_surface;
     for( std::vector<link_st>::iterator link_it = buoyant_links_.begin(); link_it!=buoyant_links_.end();++link_it)
     {
@@ -146,18 +146,21 @@ void FreeFloatingFluidPlugin::Update()
         // velocity difference in the link frame
         velocity_difference = link_it->link->GetWorldPose().rot.RotateVectorReverse(link_it->link->GetWorldLinearVel() - fluid_velocity_);
         // apply damping coefficients
-        actual_force -= link_it->link->GetWorldPose().rot.RotateVector(link_it->viscous_damping * velocity_difference);
+        actual_force -= link_it->link->GetWorldPose().rot.RotateVector(link_it->linear_damping * velocity_difference);
 
         //link_it->link->AddForceAtRelativePosition(link_it->link->GetWorldPose().rot.RotateVectorReverse(link_it->buoyant_force),
         //                                          link_it->buoyancy_center);
         link_it->link->AddForceAtWorldPosition(actual_force, cob_position);
+        link_it->link->AddRelativeTorque(-link_it->angular_damping*link_it->link->GetRelativeAngularVel());
 
         // publish states as odometry message
         nav_msgs::Odometry state;
+        state.header.stamp = ros::Time::now();
         math::Vector3 vec;
         math::Pose pose;
         for(model_it = parsed_models_.begin(); model_it!=parsed_models_.end();++model_it)
         {
+
             // write absolute pose
             pose = model_it->model_ptr->GetWorldPose();
             state.pose.pose.position.x = pose.pos.x;
@@ -252,7 +255,7 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
                         // get data from urdf
                         // default values
                         new_buoy_link.buoyancy_center = sdf_link->GetInertial()->GetCoG();
-                        new_buoy_link.viscous_damping = 5 * math::Vector3::One * sdf_link->GetInertial()->GetMass();
+                        new_buoy_link.linear_damping = new_buoy_link.angular_damping = 5 * math::Vector3::One * sdf_link->GetInertial()->GetMass();
 
                         compensation = 0;
                         for(buoy_node = link_node->FirstChild(); buoy_node != 0; buoy_node = buoy_node->NextSibling())
@@ -267,7 +270,18 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
                                 ss >> new_buoy_link.limit;
                             }
                             else if(buoy_node->ValueStr() == "damping")
-                                ReadVector3((buoy_node->ToElement()->Attribute("xyz")), new_buoy_link.viscous_damping);
+                            {
+                                if(buoy_node->ToElement()->Attribute("xyz") != NULL)
+                                {
+                                    ReadVector3((buoy_node->ToElement()->Attribute("xyz")), new_buoy_link.linear_damping);
+                                    ROS_INFO("Found linear damping");
+                                }
+                                if(buoy_node->ToElement()->Attribute("rpy") != NULL)
+                                {
+                                    ReadVector3((buoy_node->ToElement()->Attribute("rpy")), new_buoy_link.angular_damping);
+                                 ROS_INFO("Found angular damping");
+                                }
+                            }
                             else
                                 ROS_WARN("Unknown tag <%s/> in buoyancy node for model %s", buoy_node->ValueStr().c_str(), _model->GetName().c_str());
                         }

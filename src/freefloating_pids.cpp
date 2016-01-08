@@ -6,7 +6,7 @@ using std::string;
 
 FreeFloatingPids::FreeFloatingPids()
 {
-    setpoint_received_ = false;
+    setpoint_received_ = state_received_ = false;
     position_pids_.clear();
     velocity_pids_.clear();
 }

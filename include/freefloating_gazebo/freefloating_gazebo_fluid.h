@@ -31,7 +31,8 @@ private:
         physics::LinkPtr link;
         math::Vector3 buoyant_force;
         math::Vector3 buoyancy_center;
-        math::Vector3 viscous_damping;
+        math::Vector3 linear_damping;
+        math::Vector3 angular_damping;
         double limit;
     };
 

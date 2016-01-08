@@ -84,7 +84,7 @@ bool FreeFloatingJointPids::UpdatePID()
             position_pids_[i].pid.getGains(dummy, dummy, dummy, joint_max_velocity_[i], dummy);
     }
 
-    if(setpoint_received_)
+    if(setpoint_received_ && state_received_)
     {
         if(control_type_ == POSITION_CONTROL)
         {
@@ -121,10 +121,10 @@ bool FreeFloatingJointPids::UpdatePID()
             UpdateVelocityPID();
         }
 
-
+    return true;
     }
 
-    return setpoint_received_;
+    return false;
 }
 
 void FreeFloatingJointPids::SetpointCallBack(const sensor_msgs::JointStateConstPtr &_msg)
@@ -156,6 +156,7 @@ void FreeFloatingJointPids::SetpointCallBack(const sensor_msgs::JointStateConstP
 
 void FreeFloatingJointPids::MeasureCallBack(const sensor_msgs::JointStateConstPtr &_msg)
 {
+    state_received_ = true;
     // assume joints are ordered the same, should be the case when the measure comes from Gazebo
     joint_measure_ = *_msg;
 }

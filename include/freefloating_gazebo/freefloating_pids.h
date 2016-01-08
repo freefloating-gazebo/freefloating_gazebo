@@ -58,6 +58,7 @@ protected:
     control_type control_type_;
     double error_filter;
     bool setpoint_received_;
+    bool state_received_;
 
 };
 

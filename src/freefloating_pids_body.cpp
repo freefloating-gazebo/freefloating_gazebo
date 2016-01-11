@@ -80,7 +80,7 @@ void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt,
 
 bool FreeFloatingBodyPids::UpdatePID()
 {
-    if(setpoint_received_)
+    if(setpoint_received_ && state_received_)
     {
         if(control_type_ == POSITION_CONTROL)
         {
@@ -103,7 +103,7 @@ bool FreeFloatingBodyPids::UpdatePID()
             //cout << "Pose lin error in WF: " << (pose_lin_setpoint_ - pose_lin_measure_).transpose() << endl;
             //cout << "Pose ang error in WF: " << (world_to_body.inverse() * pose_ang_error_).transpose() << endl;
 
-          /*          const double sin_theta_over_2 = sqrt(q.x()*q.x() + q.y()*q.y() + q.z()*q.z());
+            /*          const double sin_theta_over_2 = sqrt(q.x()*q.x() + q.y()*q.y() + q.z()*q.z());
             if(sin_theta_over_2 == 0)
                 pose_ang_error_ = Eigen::Vector3d(0,0,0);
             else
@@ -127,26 +127,26 @@ bool FreeFloatingBodyPids::UpdatePID()
             UpdateVelocityPID();
 
         }
-
+        return true;
     }
 
-    return setpoint_received_;
+    return false;
 }
 
 void FreeFloatingBodyPids::SetpointCallBack(const freefloating_gazebo::BodySetpointConstPtr &_msg)
 {
     setpoint_received_ = true;
 
-  //  if(_msg->reference_frame == "velocity")
+    //  if(_msg->reference_frame == "velocity")
     {
-    //    control_type_ = VELOCITY_CONTROL;
+        //    control_type_ = VELOCITY_CONTROL;
         // velocity setpoint is already in the body frame
         velocity_lin_setpoint_ = Eigen::Vector3d(_msg->twist.linear.x, _msg->twist.linear.y, _msg->twist.linear.z);
         velocity_ang_setpoint_ = Eigen::Vector3d(_msg->twist.angular.x, _msg->twist.angular.y, _msg->twist.angular.z);
     }
- //   else
+    //   else
     {
-    //    control_type_ = POSITION_CONTROL;
+        //    control_type_ = POSITION_CONTROL;
         pose_lin_setpoint_ = Eigen::Vector3d(_msg->pose.position.x, _msg->pose.position.y, _msg->pose.position.z);
         pose_ang_setpoint_ = Eigen::Quaterniond(_msg->pose.orientation.w, _msg->pose.orientation.x, _msg->pose.orientation.y, _msg->pose.orientation.z);
     }
@@ -156,6 +156,7 @@ void FreeFloatingBodyPids::SetpointCallBack(const freefloating_gazebo::BodySetpo
 
 void FreeFloatingBodyPids::MeasureCallBack(const nav_msgs::OdometryConstPtr &_msg)
 {
+    state_received_ = true;
     // positions are expressed in the world frame, rotation is inversed
     pose_lin_measure_ = Eigen::Vector3d(_msg->pose.pose.position.x, _msg->pose.pose.position.y, _msg->pose.pose.position.z);
     pose_ang_measure_inv_ = Eigen::Quaterniond(_msg->pose.pose.orientation.w, _msg->pose.pose.orientation.x, _msg->pose.pose.orientation.y, _msg->pose.pose.orientation.z).inverse();

@@ -155,12 +155,14 @@ void FreeFloatingFluidPlugin::Update()
 
         // publish states as odometry message
         nav_msgs::Odometry state;
+        state.header.frame_id = "world";
         state.header.stamp = ros::Time::now();
         math::Vector3 vec;
         math::Pose pose;
         for(model_it = parsed_models_.begin(); model_it!=parsed_models_.end();++model_it)
         {
-
+            // which link
+            state.child_frame_id = "base_link";
             // write absolute pose
             pose = model_it->model_ptr->GetWorldPose();
             state.pose.pose.position.x = pose.pos.x;

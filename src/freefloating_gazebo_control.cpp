@@ -352,8 +352,6 @@ void FreeFloatingControlPlugin::BodyCommandCallBack(const geometry_msgs::WrenchC
         // also store thruster use in %
         for(i=0;i<thruster_nb_;++i)
             thruster_use_.data[i] = 100/norm_ratio*std::abs(thruster_command(i) / thruster_max_command_[i]);
-
     }
-
 }
 }

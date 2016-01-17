@@ -1,4 +1,4 @@
-freefloating_gazebo for indigo
+freefloating_gazebo for Indigo
 ===================
 
 A Gazebo plugin to simulate underwater vehicles and visualize with UWsim.

@@ -2,11 +2,18 @@ cmake_minimum_required(VERSION 2.8.3)
 project(freefloating_gazebo)
 set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
 find_package(catkin REQUIRED COMPONENTS
+  roscpp
   gazebo_ros
+  std_msgs
+  std_srvs
+  gazebo_msgs
+  geometry_msgs
+  sensor_msgs
   urdf
   control_toolbox
   rostime
   message_generation
+  nav_msgs
 )
 
 find_package(gazebo REQUIRED)
@@ -34,9 +41,16 @@ catkin_package(
  INCLUDE_DIRS include
  LIBRARIES ${PROJECT_NAME} 
  DEPENDS
+    roscpp
+    std_msgs
+    std_srvs
     gazebo_ros
+    gazebo_msgs
+    geometry_msgs
+    sensor_msgs
     control_toolbox
     rostime
+    nav_msgs
 )
 
 link_directories(${GAZEBO_LIBRARY_DIRS})

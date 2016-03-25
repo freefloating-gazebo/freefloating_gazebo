@@ -45,10 +45,12 @@ private:
     }
     // parse received body command
     void BodyCommandCallBack(const geometry_msgs::WrenchConstPtr& _msg);
+    // parse received thruster command
+    void ThrusterCommandCallBack(const sensor_msgs::JointStateConstPtr& _msg);
     // parse switch service
     bool SwitchService(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res);
 
-    // WTF no pseudo-inverse in Eigen ?
+    // no pseudo-inverse in Eigen ?
     void ComputePseudoInverse(const Eigen::MatrixXd &_M, Eigen::MatrixXd &_pinv_M);
 
 private:
@@ -65,17 +67,20 @@ private:
     // -- body control ----------------------------------------
     // model body data
     physics::LinkPtr body_;
-    unsigned int thruster_nb_;
     Eigen::MatrixXd thruster_map_;
     Eigen::MatrixXd thruster_inverse_map_;
     std::vector<double> thruster_max_command_;
-    bool control_body_;
+    bool control_body_, wrench_control_;
 
+    // thruster control
+    std::vector<unsigned int> thruster_steer_idx_, thruster_fixed_idx_;
+    std::vector<physics::LinkPtr> thruster_links_;
+    std::vector<std::string> thruster_names_;
+    Eigen::VectorXd thruster_command_;
 
     // subscriber
     ros::Subscriber body_command_subscriber_;
     std::string body_command_topic_;
-    Eigen::VectorXd body_command_;
     bool body_command_received_;
 
     // -- joint control ----------------------------------------

@@ -36,13 +36,14 @@ int main(int argc, char ** argv)
     // -- Parse body data if needed ---------
 
     // body setpoint and state topics
-    std::string body_setpoint_topic, body_state_topic, body_command_topic;
+    std::string body_position_sp_topic, body_velocity_sp_topic, body_state_topic, body_command_topic;
     std::vector<std::string> controlled_axes;
 
     if(control_body)
     {
         control_body = true;
-        control_node.param("config/body/setpoint", body_setpoint_topic, std::string("body_setpoint"));
+        control_node.param("config/body/position_setpoint", body_position_sp_topic, std::string("body_position_setpoint"));
+        control_node.param("config/body/velocity_setpoint", body_velocity_sp_topic, std::string("body_velocity_setpoint"));
         control_node.param("config/body/state", body_state_topic, std::string("body_state"));
         control_node.param("config/body/command", body_command_topic, std::string("body_command"));
         // controlled body axes
@@ -70,15 +71,18 @@ int main(int argc, char ** argv)
     // -- Init body ------------------
     // PID's class
     FreeFloatingBodyPids body_pid;
-    ros::Subscriber body_setpoint_subscriber, body_state_subscriber;
+    ros::Subscriber body_position_sp_subscriber, body_velocity_sp_subscriber, body_state_subscriber;
     ros::Publisher body_command_publisher;
     if(control_body)
     {
         body_pid.Init(control_node, dt, controlled_axes);
 
-        // setpoint
-        body_setpoint_subscriber =
-                rosnode.subscribe(body_setpoint_topic, 1, &FreeFloatingBodyPids::SetpointCallBack, &body_pid);
+        // position setpoint
+        body_position_sp_subscriber =
+                rosnode.subscribe(body_position_sp_topic, 1, &FreeFloatingBodyPids::PositionSPCallBack, &body_pid);
+        // velocity setpoint
+        body_velocity_sp_subscriber =
+                rosnode.subscribe(body_velocity_sp_topic, 1, &FreeFloatingBodyPids::VelocitySPCallBack, &body_pid);
         // measure
         body_state_subscriber =
                 rosnode.subscribe(body_state_topic, 1, &FreeFloatingBodyPids::MeasureCallBack, &body_pid);

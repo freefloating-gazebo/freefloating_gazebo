@@ -133,25 +133,28 @@ bool FreeFloatingBodyPids::UpdatePID()
     return false;
 }
 
-void FreeFloatingBodyPids::SetpointCallBack(const freefloating_gazebo::BodySetpointConstPtr &_msg)
-{
-    setpoint_received_ = true;
 
-    //  if(_msg->reference_frame == "velocity")
-    {
-        //    control_type_ = VELOCITY_CONTROL;
-        // velocity setpoint is already in the body frame
-        velocity_lin_setpoint_ = Eigen::Vector3d(_msg->twist.linear.x, _msg->twist.linear.y, _msg->twist.linear.z);
-        velocity_ang_setpoint_ = Eigen::Vector3d(_msg->twist.angular.x, _msg->twist.angular.y, _msg->twist.angular.z);
-    }
-    //   else
-    {
-        //    control_type_ = POSITION_CONTROL;
-        pose_lin_setpoint_ = Eigen::Vector3d(_msg->pose.position.x, _msg->pose.position.y, _msg->pose.position.z);
-        pose_ang_setpoint_ = Eigen::Quaterniond(_msg->pose.orientation.w, _msg->pose.orientation.x, _msg->pose.orientation.y, _msg->pose.orientation.z);
-    }
+// parse received position setpoint
+void FreeFloatingBodyPids::PositionSPCallBack(const geometry_msgs::PoseStampedConstPtr& _msg)
+{
+    if(control_type_ == POSITION_CONTROL)
+        setpoint_received_ = true;
+
+    pose_lin_setpoint_ = Eigen::Vector3d(_msg->pose.position.x, _msg->pose.position.y, _msg->pose.position.z);
+    pose_ang_setpoint_ = Eigen::Quaterniond(_msg->pose.orientation.w, _msg->pose.orientation.x, _msg->pose.orientation.y, _msg->pose.orientation.z);
+
+
 }
 
+// parse received velocity setpoint
+void FreeFloatingBodyPids::VelocitySPCallBack(const geometry_msgs::TwistStampedConstPtr & _msg)
+{
+    if(control_type_ == VELOCITY_CONTROL)
+        setpoint_received_ = true;
+    velocity_lin_setpoint_ = Eigen::Vector3d(_msg->twist.linear.x, _msg->twist.linear.y, _msg->twist.linear.z);
+    velocity_ang_setpoint_ = Eigen::Vector3d(_msg->twist.angular.x, _msg->twist.angular.y, _msg->twist.angular.z);
+
+}
 
 
 void FreeFloatingBodyPids::MeasureCallBack(const nav_msgs::OdometryConstPtr &_msg)

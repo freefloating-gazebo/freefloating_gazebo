@@ -3,12 +3,13 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/Wrench.h>
-#include <freefloating_gazebo/BodySetpoint.h>
+#include <freefloating_gazebo/freefloating_pids.h>
 #include <control_toolbox/pid.h>
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Geometry>
-#include <freefloating_gazebo/freefloating_pids.h>
 
 class FreeFloatingBodyPids : public FreeFloatingPids
 {
@@ -16,8 +17,11 @@ class FreeFloatingBodyPids : public FreeFloatingPids
 public:
     void Init(const ros::NodeHandle &_node, ros::Duration&_dt, const std::vector<std::string>&_controlled_axes);
 
-    // parse received body setpoint
-    void SetpointCallBack(const freefloating_gazebo::BodySetpointConstPtr & _msg);
+    // parse received position setpoint
+    void PositionSPCallBack(const geometry_msgs::PoseStampedConstPtr& _msg);
+    // parse received velocity setpoint
+    void VelocitySPCallBack(const geometry_msgs::TwistStampedConstPtr & _msg);
+
     // parse received body measure
     void MeasureCallBack(const nav_msgs::OdometryConstPtr& _msg);
 

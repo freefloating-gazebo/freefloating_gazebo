@@ -244,7 +244,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
         // push joint limits and setup joint states
         std::vector<std::string> joint_names;
-        std::vector<double> joint_min, joint_max;
+        std::vector<double> joint_min, joint_max, vel_max;
         std::string name;
         physics::JointPtr joint;
         joints_.clear();
@@ -259,6 +259,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
             if(control_node.hasParam(name))
             {
+
                 joints_.push_back(joint);
                 // set max velocity or max effort for the position PID
                 sprintf(param, "%s/position/i_clamp", name.c_str());
@@ -275,6 +276,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
                 joint_names.push_back(name);
                 joint_min.push_back(joint->GetLowerLimit(0).Radian());
                 joint_max.push_back(joint->GetUpperLimit(0).Radian());
+                vel_max.push_back(joint->GetVelocityLimit(0));
             }
         }
 
@@ -282,6 +284,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         control_node.setParam("config/joints/name", joint_names);
         control_node.setParam("config/joints/lower", joint_min);
         control_node.setParam("config/joints/upper", joint_max);
+        control_node.setParam("config/joints/velocity", vel_max);
 
         // setup joint_states publisher
         joint_state_publisher_ = rosnode_.advertise<sensor_msgs::JointState>(joint_state_topic, 1);

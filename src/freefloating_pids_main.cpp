@@ -13,6 +13,7 @@ int main(int argc, char ** argv)
     ros::NodeHandle rosnode;
     ros::NodeHandle control_node(rosnode, "controllers");
 
+
     // wait for body or joint param
     bool control_body = false;
     bool control_joints = false;

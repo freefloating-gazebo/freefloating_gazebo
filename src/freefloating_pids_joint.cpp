@@ -13,7 +13,6 @@ void FreeFloatingJointPids::Init(const ros::NodeHandle&_node, ros::Duration&_dt)
 
     // store dynamic reconfigure
 
-
     // filter param
     alpha_ = .5;
 
@@ -48,7 +47,7 @@ void FreeFloatingJointPids::Init(const ros::NodeHandle&_node, ros::Duration&_dt)
     // store limits
     _node.getParam("config/joints/upper", joint_upper_);
     _node.getParam("config/joints/lower", joint_lower_);
-    joint_max_velocity_.resize(n);
+    _node.getParam("config/joints/velocity", joint_max_velocity_);
     vmax_is_set_ = !cascaded_position_pid_;
 
     for(unsigned int i=0;i<n;++i)
@@ -80,8 +79,9 @@ bool FreeFloatingJointPids::UpdatePID()
     if(!vmax_is_set_)
     {
         double dummy;
+        bool antiwindup;
         for(unsigned int i=0;i<velocity_error_.size();++i)
-            position_pids_[i].pid.getGains(dummy, dummy, dummy, joint_max_velocity_[i], dummy);
+            position_pids_[i].pid.getGains(dummy, dummy, dummy, joint_max_velocity_[i], dummy, antiwindup);
     }
 
     if(setpoint_received_ && state_received_)
@@ -107,21 +107,28 @@ bool FreeFloatingJointPids::UpdatePID()
             // get velocity error
             for(unsigned int i=0;i<velocity_error_.size();++i)
             {
-                velocity_filtered_measure_[i] = filters::exponentialSmoothing(joint_measure_.velocity[i], velocity_filtered_measure_[i], alpha_);
-                velocity_error_[i] = filters::clamp(joint_setpoint_.velocity[i], -joint_max_velocity_[i], joint_max_velocity_[i]) - velocity_filtered_measure_[i];
+                // if joint is a max bound, error is 0
+                if((joint_measure_.position[i] >= joint_upper_[i] && joint_setpoint_.velocity[i] > 0) ||
+                        (joint_measure_.position[i] <= joint_lower_[i] && joint_setpoint_.velocity[i] < 0))
+                    velocity_error_[i] = 0;
+                else
+                {
+                    velocity_filtered_measure_[i] = filters::exponentialSmoothing(joint_measure_.velocity[i], velocity_filtered_measure_[i], alpha_);
+                    //  cout << "Joint " << i+1 << "vel: " << joint_setpoint_.velocity[i] << ", min: " << -joint_max_velocity_[i] << ", max: " << joint_max_velocity_[i] << endl;
+                    velocity_error_[i] = filters::clamp(joint_setpoint_.velocity[i], -joint_max_velocity_[i], joint_max_velocity_[i]) - velocity_filtered_measure_[i];
+                }
             }
 
-            /*   cout << "-----------------------" << endl;
-            for(unsigned int i=0;i<velocity_error_.size();++i)
+            /*   for(unsigned int i=0;i<velocity_error_.size();++i)
             {
-                cout << "Joint " << i+1 << ": setpoint = " << joint_setpoint_.velocity[i] << ", measure = " << joint_measure_.velocity[i] << ", error = " << velocity_error_[i] << ", command = " << joint_command_.effort[i] << endl;
+                cout << "Joint " << i+1 << ": setpoint clamped = " << filters::clamp(joint_setpoint_.velocity[i], -joint_max_velocity_[i], joint_max_velocity_[i]) << ", measure = " << velocity_filtered_measure_[i] << ", error = " << velocity_error_[i] << ", command = " << joint_command_.effort[i] << endl;
             }*/
 
             // update pid's
             UpdateVelocityPID();
         }
 
-    return true;
+        return true;
     }
 
     return false;
@@ -133,6 +140,7 @@ void FreeFloatingJointPids::SetpointCallBack(const sensor_msgs::JointStateConstP
 
     // don't assume joints are ordered the same!
     //joint_setpoint_ = *_msg;
+
 
     // check for joint ordering
     unsigned int i,j;

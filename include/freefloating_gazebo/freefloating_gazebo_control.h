@@ -103,7 +103,7 @@ private:
 
     // publisher to thruster percent use
     ros::Publisher thruster_use_publisher_;
-    std_msgs::Float32MultiArray thruster_use_;
+    sensor_msgs::JointState thruster_use_;
 
 
 

@@ -18,7 +18,6 @@ void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt,
 
     std::string axes[] = {"x", "y", "z", "roll", "pitch", "yaw"};
 
-
     // get whether or not we use dynamic reconfigure
     bool use_dynamic_reconfig;
     _node.param("config/body/dynamic_reconfigure", use_dynamic_reconfig, false);
@@ -153,7 +152,6 @@ void FreeFloatingBodyPids::VelocitySPCallBack(const geometry_msgs::TwistStampedC
         setpoint_received_ = true;
     velocity_lin_setpoint_ = Eigen::Vector3d(_msg->twist.linear.x, _msg->twist.linear.y, _msg->twist.linear.z);
     velocity_ang_setpoint_ = Eigen::Vector3d(_msg->twist.angular.x, _msg->twist.angular.y, _msg->twist.angular.z);
-
 }
 
 

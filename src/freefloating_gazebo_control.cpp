@@ -49,7 +49,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     // register ROS node & time
     rosnode_ = ros::NodeHandle(robot_namespace_);
     ros::NodeHandle control_node(rosnode_, "controllers");
-    t_prev_= 0;
+    t_prev_ = 0;
 
     // check for body or joint param
     control_body_ = false;
@@ -125,7 +125,6 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
                     }
 
                     ROS_INFO("Adding %s as a fixed thruster", thruster_names_[thruster_names_.size()-1].c_str());
-
                 }
                 else if(sdf_element->HasElement("name"))
                 {
@@ -159,8 +158,9 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         // initialize subscriber to body commands
         thruster_command_.resize(thruster_names_.size());
         // initialize publisher to thruster_use
-        thruster_use_.data.resize(thruster_max_command_.size());
-        thruster_use_publisher_ = rosnode_.advertise<std_msgs::Float32MultiArray>("thruster_use", 1);
+        thruster_use_.name = thruster_names_;
+        thruster_use_.position.resize(thruster_max_command_.size());
+        thruster_use_publisher_ = rosnode_.advertise<sensor_msgs::JointState>("thruster_use", 1);
 
         ros::SubscribeOptions ops;
         if(wrench_control_)
@@ -229,7 +229,6 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
     if(control_joints_ && model_->GetJointCount() != 0)
     {
-
         std::string joint_command_topic, joint_state_topic;
         control_node.param("config/joints/command", joint_command_topic, std::string("joint_command"));
         control_node.param("config/joints/state", joint_state_topic, std::string("joint_state"));
@@ -247,7 +246,6 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         std::vector<double> joint_min, joint_max, vel_max;
         std::string name;
         physics::JointPtr joint;
-        joints_.clear();
         bool cascaded_position = true;
         if(control_node.hasParam("config/joints/cascaded_position"))
             control_node.getParam("config/joints/cascaded_position", cascaded_position);
@@ -259,7 +257,6 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
             if(control_node.hasParam(name))
             {
-
                 joints_.push_back(joint);
                 // set max velocity or max effort for the position PID
                 sprintf(param, "%s/position/i_clamp", name.c_str());
@@ -321,12 +318,20 @@ void FreeFloatingControlPlugin::Update()
         // deal with joint control
         if(control_joints_ && joint_command_received_)
         {
+            // effort can be in effort but also in position field if GUI is used...
+            std::vector<double>* setpoint;
+            if(joint_command_.effort.size())
+                setpoint = &(joint_command_.effort);
+            else if(joint_command_.position.size())
+                setpoint = &(joint_command_.position);
             physics::JointPtr joint;
-            for(unsigned int i=0;i<joints_.size();++i)
+            unsigned int idx;
+            for(unsigned int i=0;i<joint_command_.name.size();++i)
             {
-                joint = joints_[i];
-                //joint->SetForce(0,joint_command_.effort[i] - joint->GetDamping(0) * joint->GetVelocity(0));
-                joint->SetForce(0,joint_command_.effort[i]);
+                // find corresponding model joint
+                idx = std::distance(joint_states_.name.begin(), std::find(joint_states_.name.begin(), joint_states_.name.end(), joint_command_.name[i]));
+                joint = joints_[idx];
+                joint->SetForce(0,(*setpoint)[i]);
             }
         }
 
@@ -362,7 +367,7 @@ void FreeFloatingControlPlugin::Update()
 
             // compute and publish thruster use in %
             for(i=0;i<thruster_command_.size();++i)
-                thruster_use_.data[i] = 100*std::abs(thruster_command_(i) / thruster_max_command_[i]);
+                thruster_use_.position[i] = 100*std::abs(thruster_command_(i) / thruster_max_command_[i]);
             thruster_use_publisher_.publish(thruster_use_);
         }
     }
@@ -421,7 +426,7 @@ void FreeFloatingControlPlugin::ThrusterCommandCallBack(const sensor_msgs::Joint
         return;
 
     if(_msg->name.size() != _msg->position.size())
-        ROS_WARN("Received inconsistent thruster command");
+        ROS_WARN("Received inconsistent thruster command, name and effort dimension do not match");
     else
     {
         body_command_received_ = true;

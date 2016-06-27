@@ -1,4 +1,3 @@
-
 #include <freefloating_gazebo/freefloating_pids_body.h>
 #include <freefloating_gazebo/freefloating_pids_joint.h>
 
@@ -12,7 +11,6 @@ int main(int argc, char ** argv)
     ros::init(argc, argv, "freefloating_pid_control");
     ros::NodeHandle rosnode;
     ros::NodeHandle control_node(rosnode, "controllers");
-
 
     // wait for body or joint param
     bool control_body = false;
@@ -42,7 +40,6 @@ int main(int argc, char ** argv)
 
     if(control_body)
     {
-        control_body = true;
         control_node.param("config/body/position_setpoint", body_position_sp_topic, std::string("body_position_setpoint"));
         control_node.param("config/body/velocity_setpoint", body_velocity_sp_topic, std::string("body_velocity_setpoint"));
         control_node.param("config/body/state", body_state_topic, std::string("body_state"));

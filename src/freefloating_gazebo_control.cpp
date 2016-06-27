@@ -78,7 +78,10 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
             string control_type;
             control_node.getParam("config/body/control_type", control_type);
             if(control_type == "thruster")
+            {
                 wrench_control_ = false;
+                body_command_topic = "thruster_command";
+            }
         }
 
         if(_sdf->HasElement("link"))
@@ -183,7 +186,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         // if wrench control, compute map pseudo-inverse and help PID's with maximum forces by axes
         std::string axe[] = {"x", "y", "z", "roll", "pitch", "yaw"};
         std::vector<std::string> controlled_axes;
-        if(thruster_fixed_idx_.size())
+        if(thruster_fixed_idx_.size() && !thruster_steer_idx_.size())
         {
             ComputePseudoInverse(thruster_map_, thruster_inverse_map_);
 
@@ -214,7 +217,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         }
         else
         {
-            // no fixed thrusters? assume all axes are controlled
+            // thruster-controlled? assume all axes can be controlled
             for(unsigned int i=0;i<6;++i)
                 controlled_axes.push_back(axe[i]);
         }
@@ -324,12 +327,6 @@ void FreeFloatingControlPlugin::Update()
         // deal with joint control
         if(control_joints_ && joint_command_received_)
         {
-            // effort can be in effort but also in position field if GUI is used...
-            std::vector<double>* setpoint;
-            if(joint_command_.effort.size())
-                setpoint = &(joint_command_.effort);
-            else if(joint_command_.position.size())
-                setpoint = &(joint_command_.position);
             physics::JointPtr joint;
             unsigned int idx;
             for(unsigned int i=0;i<joint_command_.name.size();++i)
@@ -337,7 +334,7 @@ void FreeFloatingControlPlugin::Update()
                 // find corresponding model joint
                 idx = std::distance(joint_states_.name.begin(), std::find(joint_states_.name.begin(), joint_states_.name.end(), joint_command_.name[i]));
                 joint = joints_[idx];
-                joint->SetForce(0,(*setpoint)[i]);
+                joint->SetForce(0,joint_command_.effort[i]);
             }
         }
 

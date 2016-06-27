@@ -39,7 +39,7 @@ protected:
 
     void InitSwitchServices(const std::string &_name)
     {
-        control_type_ = VELOCITY_CONTROL;
+        control_type_ = POSITION_CONTROL;
         position_service_ = pid_node_.advertiseService<std_srvs::EmptyRequest, std_srvs::EmptyResponse>(_name + "_position_control", boost::bind(&FreeFloatingPids::ToPositionControl, this, _1, _2));
         velocity_service_ = pid_node_.advertiseService<std_srvs::EmptyRequest, std_srvs::EmptyResponse>(_name + "_velocity_control", boost::bind(&FreeFloatingPids::ToVelocityControl, this, _1, _2));
     }

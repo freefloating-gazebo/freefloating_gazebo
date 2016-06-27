@@ -26,12 +26,14 @@ int main(int argc, char ** argv)
     if(control_node.hasParam("config/body/control_type"))
     {
         std::string control_type;
-        control_node.getParam("config/body/control_type", control_type);
+        control_node.getParam("config/body/control_type", control_type);        
         if(control_type == "thruster")
-             control_body = false;
+        {
+            // check for a flag that tells us to use PID however
+            control_body = control_node.param("config/body/use_pid", false);
+            cout << "Checked use_pid:" << control_body << endl;
+        }
     }
-
-
     // -- Parse body data if needed ---------
 
     // body setpoint and state topics

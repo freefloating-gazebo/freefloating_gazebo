@@ -78,10 +78,16 @@ bool FreeFloatingJointPids::UpdatePID()
 {
     if(!vmax_is_set_)
     {
-        double dummy;
+        control_toolbox::Pid::Gains gains;
         bool antiwindup;
+
         for(unsigned int i=0;i<velocity_error_.size();++i)
-            position_pids_[i].pid.getGains(dummy, dummy, dummy, joint_max_velocity_[i], dummy, antiwindup);
+        {
+               gains = position_pids_[i].pid.getGains();
+            //position_pids_[i].pid.getGains(dummy, dummy, dummy, joint_max_velocity_[i], dummy, antiwindup);
+               joint_max_velocity_[i] = gains.i_max_;
+
+        }
     }
 
     if(setpoint_received_ && state_received_)

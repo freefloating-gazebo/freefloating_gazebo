@@ -122,6 +122,9 @@ bool FreeFloatingBodyPids::UpdatePID()
             velocity_lin_error_ =  velocity_lin_setpoint_ - velocity_lin_measure_;
             velocity_ang_error_ =  velocity_ang_setpoint_ - velocity_ang_measure_;
 
+            //cout << "Velocity lin error in WF: " << (velocity_lin_error_).transpose() << endl;
+
+
             // writes the wrench command
             UpdateVelocityPID();
 

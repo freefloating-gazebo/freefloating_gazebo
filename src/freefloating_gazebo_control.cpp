@@ -269,7 +269,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
                     control_node.setParam(param, joint->GetEffortLimit(0));
 
                 // set max effort for the velocity PID
-                sprintf(param, "%s/velocity/i_clamp", name.c_str());
+                sprintf(param, "%s/velocity/i_clamp", name.c_str());                
                 control_node.setParam(param, joint->GetEffortLimit(0));
 
                 // set antiwindup to true - why would anyone set it to false?

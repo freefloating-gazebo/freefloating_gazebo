@@ -51,6 +51,9 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     ros::NodeHandle control_node(rosnode_, "controllers");
     t_prev_ = 0;
 
+    // get surface Z
+    rosnode_.getParam("/gazebo/surface", z_surface_);
+
     // check for body or joint param
     control_body_ = false;
     control_joints_ = false;
@@ -269,7 +272,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
                     control_node.setParam(param, joint->GetEffortLimit(0));
 
                 // set max effort for the velocity PID
-                sprintf(param, "%s/velocity/i_clamp", name.c_str());                
+                sprintf(param, "%s/velocity/i_clamp", name.c_str());
                 control_node.setParam(param, joint->GetEffortLimit(0));
 
                 // set antiwindup to true - why would anyone set it to false?
@@ -338,8 +341,8 @@ void FreeFloatingControlPlugin::Update()
             }
         }
 
-        // deal with body control
-        if(control_body_ && body_command_received_)
+        // deal with body control if underwater
+        if(control_body_ && body_command_received_ && (body_->GetWorldCoGPose().pos.z < z_surface_))
         {
             // saturate thruster use
             double norm_ratio = 1;
@@ -428,19 +431,28 @@ void FreeFloatingControlPlugin::ThrusterCommandCallBack(const sensor_msgs::Joint
     if(!control_body_)
         return;
 
-    if(_msg->name.size() != _msg->position.size())
-        ROS_WARN("Received inconsistent thruster command, name and effort dimension do not match");
-    else
+    const bool read_effort = _msg->effort.size();
+
+    if(read_effort && (_msg->name.size() != _msg->effort.size()))
     {
-        body_command_received_ = true;
-        // store thruster command
-        for(unsigned int i=0;i<thruster_names_.size();++i)
+        ROS_WARN("Received inconsistent thruster command, name and effort dimension do not match");
+        return;
+    }
+    else
+        if(!read_effort && (_msg->name.size() != _msg->position.size()))
         {
-            for(unsigned int j=0;j<_msg->name.size();++j)
-            {
-                if(thruster_names_[i] == _msg->name[j])
-                    thruster_command_(i) = _msg->position[j];
-            }
+            ROS_WARN("Received inconsistent thruster command, name and position dimension do not match");
+            return;
+        }
+
+    body_command_received_ = true;
+    // store thruster command
+    for(unsigned int i=0;i<thruster_names_.size();++i)
+    {
+        for(unsigned int j=0;j<_msg->name.size();++j)
+        {
+            if(thruster_names_[i] == _msg->name[j])
+                thruster_command_(i) = read_effort?_msg->effort[j]:_msg->position[j];
         }
     }
 }

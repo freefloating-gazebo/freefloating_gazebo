@@ -38,6 +38,9 @@ void FreeFloatingFluidPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sd
     ROS_INFO("Loading freefloating_fluid plugin");
     this->world_ = _world;
 
+    // register ROS node
+    rosnode_ = new ros::NodeHandle("gazebo");
+
     // parse plugin options
     description_ = "robot_description";
     has_surface_ = false;
@@ -55,12 +58,11 @@ void FreeFloatingFluidPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sd
         const math::Vector3 WORLD_GRAVITY = world_->GetPhysicsEngine()->GetGravity().Normalize();
         // water surface is orthogonal to gravity
         surface_plane_.Set(WORLD_GRAVITY.x, WORLD_GRAVITY.y, WORLD_GRAVITY.z, WORLD_GRAVITY.Dot(surface_point));
+        // push on parameter server
+        rosnode_->setParam("surface", surface_point.z);
     }
 
     if(_sdf->HasElement("fluidTopic"))  fluid_topic = _sdf->Get<std::string>("fluidTopic");
-
-    // register ROS node
-    rosnode_ = new ros::NodeHandle("gazebo");
 
     // initialize subscriber to water current
     ros::SubscribeOptions ops = ros::SubscribeOptions::create<geometry_msgs::Vector3>(
@@ -146,6 +148,10 @@ void FreeFloatingFluidPlugin::Update()
         // get velocity damping
         // velocity difference in the link frame
         velocity_difference = link_it->link->GetWorldPose().rot.RotateVectorReverse(link_it->link->GetWorldLinearVel() - fluid_velocity_);
+        // to square
+        velocity_difference.x *= fabs(velocity_difference.x);
+        velocity_difference.y *= fabs(velocity_difference.y);
+        velocity_difference.z *= fabs(velocity_difference.z);
         // apply damping coefficients
         actual_force -= link_it->link->GetWorldPose().rot.RotateVector(link_it->linear_damping * velocity_difference);
 

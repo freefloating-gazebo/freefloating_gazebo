@@ -63,6 +63,7 @@ private:
     ros::ServiceServer switch_service_;
     bool controller_is_running_;
     double update_T_;
+    double z_surface_;
 
     // -- body control ----------------------------------------
     // model body data

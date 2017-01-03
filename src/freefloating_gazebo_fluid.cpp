@@ -146,7 +146,7 @@ void FreeFloatingFluidPlugin::Update()
         }
 
         // get velocity damping
-        // velocity difference in the link frame
+        // linear velocity difference in the link frame
         velocity_difference = link_it->link->GetWorldPose().rot.RotateVectorReverse(link_it->link->GetWorldLinearVel() - fluid_velocity_);
         // to square
         velocity_difference.x *= fabs(velocity_difference.x);
@@ -158,7 +158,13 @@ void FreeFloatingFluidPlugin::Update()
         //link_it->link->AddForceAtRelativePosition(link_it->link->GetWorldPose().rot.RotateVectorReverse(link_it->buoyant_force),
         //                                          link_it->buoyancy_center);
         link_it->link->AddForceAtWorldPosition(actual_force, cob_position);
-        link_it->link->AddRelativeTorque(-link_it->angular_damping*link_it->link->GetRelativeAngularVel());
+
+        // same for angular damping
+        velocity_difference = link_it->link->GetRelativeAngularVel();
+        velocity_difference.x *= fabs(velocity_difference.x);
+        velocity_difference.y *= fabs(velocity_difference.y);
+        velocity_difference.z *= fabs(velocity_difference.z);
+        link_it->link->AddRelativeTorque(-link_it->angular_damping*velocity_difference);
 
         // publish states as odometry message
         nav_msgs::Odometry state;

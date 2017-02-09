@@ -120,7 +120,6 @@ void FreeFloatingFluidPlugin::Update()
     }
 
     // here buoy_links is up-to-date with the links that are subject to buoyancy, let's apply it
-    physics::LinkPtr link;
     math::Vector3 actual_force, cob_position, velocity_difference, torque;
     double signed_distance_to_surface;
     for( std::vector<link_st>::iterator link_it = buoyant_links_.begin(); link_it!=buoyant_links_.end();++link_it)

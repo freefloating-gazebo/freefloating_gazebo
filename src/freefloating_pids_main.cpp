@@ -41,7 +41,7 @@ int main(int argc, char ** argv)
     {
         control_node.param("config/body/position_setpoint", body_position_sp_topic, std::string("body_position_setpoint"));
         control_node.param("config/body/velocity_setpoint", body_velocity_sp_topic, std::string("body_velocity_setpoint"));
-        control_node.param("config/body/state", body_state_topic, std::string("body_state"));
+        control_node.param("config/body/state", body_state_topic, std::string("state"));
         control_node.param("config/body/command", body_command_topic, std::string("body_command"));
         // controlled body axes
         control_node.getParam("config/body/axes", controlled_axes);

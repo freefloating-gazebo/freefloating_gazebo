@@ -59,3 +59,18 @@ src/freefloating_pids.cpp include/freefloating_gazebo/freefloating_pids.h
 src/freefloating_pids_body.cpp include/freefloating_gazebo/freefloating_pids_body.h
 src/freefloating_pids_joint.cpp include/freefloating_gazebo/freefloating_pids_joint.h)
 target_link_libraries(pid_control ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES})
+
+install(TARGETS pid_control
+                freefloating_gazebo_fluid 
+                freefloating_gazebo_control 
+                freefloating_gazebo_model_buoyancy
+        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
+
+install(DIRECTORY include/${PROJECT_NAME}/
+        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
+
+install(DIRECTORY scripts
+                  world
+            DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

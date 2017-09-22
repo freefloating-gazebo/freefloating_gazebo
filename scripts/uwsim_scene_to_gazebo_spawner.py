@@ -146,7 +146,7 @@ def create_spawner(node, gazebo_model_file):
         param_node = etree.SubElement(group_node, 'param', name = '%s_description' % name)
         spawn_args.append('%s -param %s_description' % (name, name))
     
-    param_node.set('command', '$(find xacro)/xacro %s' % abspath_to_roslaunch(gazebo_model_file))
+    param_node.set('command', '$(find xacro)/xacro --inorder %s' % abspath_to_roslaunch(gazebo_model_file))
 
     # spawner node
     spawn_node = etree.SubElement(group_node, 'node')
@@ -188,7 +188,7 @@ def process_vehicles(vehicles, datapath):
             
         # parse Gazebo file (urdf or xacro)
         if 'xacro' in gazebo_model_file:
-            uwsim_urdf_xml = subprocess.Popen(['rosrun', 'xacro', 'xacro', gazebo_model_file], stdout=subprocess.PIPE)
+            uwsim_urdf_xml = subprocess.Popen(['rosrun', 'xacro', 'xacro', '--inorder', gazebo_model_file], stdout=subprocess.PIPE)
             uwsim_urdf_xml = etree.fromstring(uwsim_urdf_xml.stdout.read())
          #   uwsim_urdf_xml = xacro.parse(gazebo_model_file)
          #   xacro.eval_self_contained(uwsim_urdf_xml)
@@ -211,7 +211,7 @@ def process_vehicles(vehicles, datapath):
         if len(meshes) != 0:
             # create uwsim urdf only if mesh in gazebo urdf, otherwise trust the user 
             for mesh in meshes:
-                mesh_file = resource_retriever.get(substitution_args.resolve_args(mesh.get('filename'))).url[7:]
+                mesh_file = resource_retriever.get_filename(substitution_args.resolve_args(mesh.get('filename')))[7:]
                 # get uwsim relative path for mesh
                 mesh_file, datadir = abspath_to_uwsim(mesh_file, datapath)
                 # if mesh in dae, try to find corresponding osg
@@ -284,7 +284,7 @@ def process_objects(objcts, datapath):
     
 if __name__ == '__main__':
     
-    rospy.init_node('scene_to_spawner')
+    #rospy.init_node('scene_to_spawner')
     
     # parse launch file to get uwsim info
     launch_file = sys.argv[1]

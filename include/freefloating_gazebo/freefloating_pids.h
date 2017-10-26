@@ -26,6 +26,10 @@ protected:
 public:
     FreeFloatingPids();
     ~FreeFloatingPids() {}
+    void initVelocityControl()
+    {
+        control_type_ = VELOCITY_CONTROL;
+    }
 
     // these updates do no check about the pointers
     void UpdatePositionPID();

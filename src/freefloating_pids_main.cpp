@@ -86,6 +86,12 @@ int main(int argc, char ** argv)
         // command
         body_command_publisher =
                 rosnode.advertise<geometry_msgs::Wrench>(body_command_topic, 1);
+
+        // default control
+        std::string def = "position";
+        control_node.param("config/body/default", def, def);
+        if(def == "velocity")
+            body_pid.initVelocityControl();
     }
 
     // -- Init joints ------------------

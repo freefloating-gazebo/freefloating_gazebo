@@ -11,16 +11,38 @@ FreeFloatingPids::FreeFloatingPids()
     velocity_pids_.clear();
 }
 
-void FreeFloatingPids::UpdatePositionPID()
+void FreeFloatingPids::UpdatePositionPID(std::vector<int> idx)
 {
-    for(std::vector<pid_st>::iterator pid = position_pids_.begin(); pid!=position_pids_.end();++pid)
-        *(pid->command_ptr) = pid->pid.computeCommand(*(pid->error_ptr), dt_);
+    if(idx.size())  // do only these indices
+    {
+        for(auto i: idx)
+        {
+            auto pid = position_pids_[i];
+            *(pid.command_ptr) = pid.pid.computeCommand(*(pid.error_ptr), dt_);
+        }
+    }
+    else
+    {
+        for(auto & pid: position_pids_)
+            *(pid.command_ptr) = pid.pid.computeCommand(*(pid.error_ptr), dt_);
+    }
 }
 
-void FreeFloatingPids::UpdateVelocityPID()
+void FreeFloatingPids::UpdateVelocityPID(std::vector<int> idx)
 {
-    for(std::vector<pid_st>::iterator pid = velocity_pids_.begin(); pid!=velocity_pids_.end();++pid)
-        *(pid->command_ptr) = pid->pid.computeCommand(*(pid->error_ptr), dt_);
+    if(idx.size())  // do only these indices
+    {
+        for(auto i: idx)
+        {
+            auto pid = velocity_pids_[i];
+            *(pid.command_ptr) = pid.pid.computeCommand(*(pid.error_ptr), dt_);
+        }
+    }
+    else
+    {
+        for(auto & pid: velocity_pids_)
+            *(pid.command_ptr) = pid.pid.computeCommand(*(pid.error_ptr), dt_);
+    }
 }
 
 bool FreeFloatingPids::ToPositionControl(std_srvs::EmptyRequest &_req, std_srvs::EmptyResponse &_res)
@@ -51,8 +73,8 @@ void FreeFloatingPids::InitPID(control_toolbox::Pid &_pid, const ros::NodeHandle
         // Load PID gains from parameter server
         if (!_node.getParam("p", gains.p_gain_))
         {
-          ROS_ERROR("No p gain specified for pid.  Namespace: %s", _node.getNamespace().c_str());
-          return;
+            ROS_ERROR("No p gain specified for pid.  Namespace: %s", _node.getNamespace().c_str());
+            return;
         }
         // Only the P gain is required, the I and D gains are optional and default to 0:
         _node.param("i", gains.i_gain_, 0.0);

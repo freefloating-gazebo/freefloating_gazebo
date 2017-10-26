@@ -13,7 +13,7 @@ class FreeFloatingPids
 protected:
     typedef enum
     {
-        EFFORT_CONTROL, VELOCITY_CONTROL, POSITION_CONTROL
+        EFFORT_CONTROL, VELOCITY_CONTROL, POSITION_CONTROL, DEPTH_CONTROL
     } control_type;
 
     struct pid_st
@@ -29,11 +29,11 @@ public:
     void initVelocityControl()
     {
         control_type_ = VELOCITY_CONTROL;
-    }
+    }    
 
     // these updates do no check about the pointers
-    void UpdatePositionPID();
-    void UpdateVelocityPID();
+    void UpdatePositionPID(std::vector<int> idx = std::vector<int>());
+    void UpdateVelocityPID(std::vector<int> idx = std::vector<int>());
 
 protected:
 

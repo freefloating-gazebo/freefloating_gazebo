@@ -67,8 +67,6 @@ void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt,
 
         InitPID(position_pids_[i].pid, ros::NodeHandle(_node, axes[j] + "/position"), use_dynamic_reconfig);
         InitPID(velocity_pids_[i].pid, ros::NodeHandle(_node, axes[j] + "/velocity"), use_dynamic_reconfig);
-
-        //        BuildPIDCouple(ros::NodeHandle(_node, axes[j]), pose_error_ptr, vel_error_ptr, command_pose_ptr, command_vel_ptr);
     }
 
     InitSwitchServices("body");
@@ -98,22 +96,6 @@ bool FreeFloatingBodyPids::UpdatePID()
                 u *= 1./sin_theta_over_2;
                 pose_ang_error_ = 2*atan2(sin_theta_over_2, q.w()) * world_to_body * u;
             }
-
-            //cout << "Pose lin error in WF: " << (pose_lin_setpoint_ - pose_lin_measure_).transpose() << endl;
-            //cout << "Pose ang error in WF: " << (world_to_body.inverse() * pose_ang_error_).transpose() << endl;
-
-            /*          const double sin_theta_over_2 = sqrt(q.x()*q.x() + q.y()*q.y() + q.z()*q.z());
-            if(sin_theta_over_2 == 0)
-                pose_ang_error_ = Eigen::Vector3d(0,0,0);
-            else
-            {
-                Eigen::Vector3d u(q.x(),q.y(),q.z());
-                u /= sin_theta_over_2;
-                pose_ang_error_ = 2*atan2(sin_theta_over_2, q.w()) * world_to_body * u;
-            }*/
-            //
-            //            pose_ang_error_ =  pose_ang_measure_inv_ * (pose_ang_setpoint_ * pose_ang_measure_inv_);//.GetAsEuler());
-            // writes the velocity setpoint
             UpdatePositionPID();
         }
         else
@@ -123,11 +105,16 @@ bool FreeFloatingBodyPids::UpdatePID()
             velocity_ang_error_ =  velocity_ang_setpoint_ - velocity_ang_measure_;
 
             //cout << "Velocity lin error in WF: " << (velocity_lin_error_).transpose() << endl;
-
-
             // writes the wrench command
             UpdateVelocityPID();
+        }
 
+        if(control_type_ == DEPTH_CONTROL)
+        {   // depth control = erase velocity z and replace with position
+            Eigen::Matrix3d world_to_body = pose_ang_measure_inv_.toRotationMatrix();
+            // express pose error in the body frame
+            pose_lin_error_ = world_to_body * (pose_lin_setpoint_ - pose_lin_measure_);
+            UpdatePositionPID({2});
         }
         return true;
     }
@@ -139,19 +126,17 @@ bool FreeFloatingBodyPids::UpdatePID()
 // parse received position setpoint
 void FreeFloatingBodyPids::PositionSPCallBack(const geometry_msgs::PoseStampedConstPtr& _msg)
 {
-    if(control_type_ == POSITION_CONTROL)
+    if(control_type_ != VELOCITY_CONTROL)
         setpoint_received_ = true;
 
     pose_lin_setpoint_ = Eigen::Vector3d(_msg->pose.position.x, _msg->pose.position.y, _msg->pose.position.z);
     pose_ang_setpoint_ = Eigen::Quaterniond(_msg->pose.orientation.w, _msg->pose.orientation.x, _msg->pose.orientation.y, _msg->pose.orientation.z);
-
-
 }
 
 // parse received velocity setpoint
 void FreeFloatingBodyPids::VelocitySPCallBack(const geometry_msgs::TwistStampedConstPtr & _msg)
 {
-    if(control_type_ == VELOCITY_CONTROL)
+    if(control_type_ != POSITION_CONTROL)
         setpoint_received_ = true;
     velocity_lin_setpoint_ = Eigen::Vector3d(_msg->twist.linear.x, _msg->twist.linear.y, _msg->twist.linear.z);
     velocity_ang_setpoint_ = Eigen::Vector3d(_msg->twist.angular.x, _msg->twist.angular.y, _msg->twist.angular.z);

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(freefloating_gazebo)
-set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
+add_compile_options(-std=c++11)
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   gazebo_ros

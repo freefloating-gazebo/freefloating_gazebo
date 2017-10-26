@@ -92,6 +92,8 @@ int main(int argc, char ** argv)
         control_node.param("config/body/default", def, def);
         if(def == "velocity")
             body_pid.initVelocityControl();
+        else if(def == "depth")
+            body_pid.initDepthControl();
     }
 
     // -- Init joints ------------------

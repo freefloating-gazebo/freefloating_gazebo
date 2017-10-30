@@ -99,7 +99,7 @@ void FreeFloatingFluidPlugin::Update()
             if(world_->GetModel(i)->GetName() == model_it->name)
                 found = true;
         }
-        if(!found && !(world_->GetModel(i)->IsStatic()))  // model not in listand not static, parse it for potential buoyancy flags
+        if(!found && !(world_->GetModel(i)->IsStatic()))  // model not in list and not static, parse it for potential buoyancy flags
             ParseNewModel(world_->GetModel(i));
     }
 
@@ -120,14 +120,14 @@ void FreeFloatingFluidPlugin::Update()
     }
 
     // here buoy_links is up-to-date with the links that are subject to buoyancy, let's apply it
-    math::Vector3 actual_force, cob_position, velocity_difference, torque;
+    math::Vector3 actual_force, cob_position, velocity_difference;
     double signed_distance_to_surface;
-    for( std::vector<link_st>::iterator link_it = buoyant_links_.begin(); link_it!=buoyant_links_.end();++link_it)
+    for( auto & link:  buoyant_links_)
     {
         // get world position of the center of buoyancy
-        cob_position = link_it->link->GetWorldPose().pos + link_it->link->GetWorldPose().rot.RotateVector(link_it->buoyancy_center);
+        cob_position = link.link->GetWorldPose().pos + link.link->GetWorldPose().rot.RotateVector(link.buoyancy_center);
         // start from the theoretical buoyancy force
-        actual_force = link_it->buoyant_force;
+        actual_force = link.buoyant_force;
         if(has_surface_)
         {
             // adjust force depending on distance to surface (very simple model)
@@ -135,35 +135,32 @@ void FreeFloatingFluidPlugin::Update()
                     - surface_plane_.x * cob_position.x
                     - surface_plane_.y * cob_position.y
                     - surface_plane_.z * cob_position.z;
-            if(signed_distance_to_surface > -link_it->limit)
+            if(signed_distance_to_surface > -link.limit)
             {
-                if(signed_distance_to_surface > link_it->limit)
+                if(signed_distance_to_surface > link.limit)
                     actual_force *= 0;
                 else
-                    actual_force *= cos(M_PI/4.*(signed_distance_to_surface/link_it->limit + 1));
+                    actual_force *= cos(M_PI/4.*(signed_distance_to_surface/link.limit + 1));
             }
         }
 
         // get velocity damping
         // linear velocity difference in the link frame
-        velocity_difference = link_it->link->GetWorldPose().rot.RotateVectorReverse(link_it->link->GetWorldLinearVel() - fluid_velocity_);
+        velocity_difference = link.link->GetWorldPose().rot.RotateVectorReverse(link.link->GetWorldLinearVel() - fluid_velocity_);
         // to square
         velocity_difference.x *= fabs(velocity_difference.x);
         velocity_difference.y *= fabs(velocity_difference.y);
         velocity_difference.z *= fabs(velocity_difference.z);
         // apply damping coefficients
-        actual_force -= link_it->link->GetWorldPose().rot.RotateVector(link_it->linear_damping * velocity_difference);
-
-        //link_it->link->AddForceAtRelativePosition(link_it->link->GetWorldPose().rot.RotateVectorReverse(link_it->buoyant_force),
-        //                                          link_it->buoyancy_center);
-        link_it->link->AddForceAtWorldPosition(actual_force, cob_position);
+        actual_force -= link.link->GetWorldPose().rot.RotateVector(link.linear_damping * velocity_difference);
+        link.link->AddForceAtWorldPosition(actual_force, cob_position);
 
         // same for angular damping
-        velocity_difference = link_it->link->GetRelativeAngularVel();
+        velocity_difference = link.link->GetRelativeAngularVel();
         velocity_difference.x *= fabs(velocity_difference.x);
         velocity_difference.y *= fabs(velocity_difference.y);
         velocity_difference.z *= fabs(velocity_difference.z);
-        link_it->link->AddRelativeTorque(-link_it->angular_damping*velocity_difference);
+        link.link->AddRelativeTorque(-link.angular_damping*velocity_difference);
 
         // publish states as odometry message
         nav_msgs::Odometry state;
@@ -171,12 +168,12 @@ void FreeFloatingFluidPlugin::Update()
         state.header.stamp = ros::Time::now();
         math::Vector3 vec;
         math::Pose pose;
-        for(model_it = parsed_models_.begin(); model_it!=parsed_models_.end();++model_it)
+        for(const auto & model: parsed_models_)
         {
             // which link
             state.child_frame_id = "base_link";
             // write absolute pose
-            pose = model_it->model_ptr->GetWorldPose();
+            pose = model.model_ptr->GetWorldPose();
             state.pose.pose.position.x = pose.pos.x;
             state.pose.pose.position.y = pose.pos.y;
             state.pose.pose.position.z = pose.pos.z;
@@ -186,18 +183,18 @@ void FreeFloatingFluidPlugin::Update()
             state.pose.pose.orientation.w = pose.rot.w;
 
             // write relative linear velocity
-            vec = model_it->model_ptr->GetRelativeLinearVel();
+            vec = model.model_ptr->GetRelativeLinearVel();
             state.twist.twist.linear.x = vec.x;
             state.twist.twist.linear.y = vec.y;
             state.twist.twist.linear.z = vec.z;
             // write relative angular velocity
-            vec = model_it->model_ptr->GetRelativeAngularVel();
+            vec = model.model_ptr->GetRelativeAngularVel();
             state.twist.twist.angular.x = vec.x;
             state.twist.twist.angular.y = vec.y;
             state.twist.twist.angular.z = vec.z;
 
             // publish
-            model_it->state_publisher.publish(state);
+            model.state_publisher.publish(state);
         }
 
         //  ROS_INFO("Link %s: Applying buoyancy force (%.01f, %.01f, %.01f)", link.name.c_str(), link.buoyant_force.x, link.buoyant_force.y, link.buoyant_force.z);
@@ -328,7 +325,6 @@ void FreeFloatingFluidPlugin::RemoveDeletedModel(std::vector<model_st>::iterator
         else
             ++link_it;
     }
-
     // remove it from the list
     _model_it = parsed_models_.erase(_model_it);
 }

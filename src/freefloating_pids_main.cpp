@@ -70,6 +70,7 @@ int main(int argc, char ** argv)
     FreeFloatingBodyPids body_pid;
     ros::Subscriber body_position_sp_subscriber, body_velocity_sp_subscriber, body_state_subscriber;
     ros::Publisher body_command_publisher;
+    std::string body_mode = "position", joint_mode = "position";
     if(control_body)
     {
         body_pid.Init(control_node, dt, controlled_axes);
@@ -88,11 +89,11 @@ int main(int argc, char ** argv)
                 rosnode.advertise<geometry_msgs::Wrench>(body_command_topic, 1);
 
         // default control
-        std::string def = "position";
-        control_node.param("config/body/default", def, def);
-        if(def == "velocity")
+
+        control_node.param("config/body/default", body_mode, body_mode);
+        if(body_mode == "velocity")
             body_pid.initVelocityControl();
-        else if(def == "depth")
+        else if(body_mode == "depth")
             body_pid.initDepthControl();
     }
 
@@ -121,7 +122,10 @@ int main(int argc, char ** argv)
     if(control_joints)
         control_node.getParam("config/joints/name", joint_names);
 
-    ROS_INFO("Init PID control for %s: %i body axes, %i joints", rosnode.getNamespace().c_str(), (int) controlled_axes.size(), (int) joint_names.size());
+    ROS_INFO("Init PID control for %s: %i body axes (%s control), %i joints (%s control)",
+             rosnode.getNamespace().c_str(),
+             (int) controlled_axes.size(),body_mode.c_str(),
+             (int) joint_names.size(),joint_mode.c_str());
 
     while(ros::ok())
     {

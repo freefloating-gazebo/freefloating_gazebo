@@ -11,6 +11,7 @@ int main(int argc, char ** argv)
     ros::init(argc, argv, "freefloating_pid_control");
     ros::NodeHandle rosnode;
     ros::NodeHandle control_node(rosnode, "controllers");
+    ros::NodeHandle priv("~");
 
     // wait for body or joint param
     bool control_body = false;
@@ -70,7 +71,10 @@ int main(int argc, char ** argv)
     FreeFloatingBodyPids body_pid;
     ros::Subscriber body_position_sp_subscriber, body_velocity_sp_subscriber, body_state_subscriber;
     ros::Publisher body_command_publisher;
-    std::string body_mode = "position", joint_mode = "position";
+    std::string default_mode = "position";
+
+    std::stringstream ss;
+    ss << "Init PID control for " << rosnode.getNamespace() << ": ";
     if(control_body)
     {
         body_pid.Init(control_node, dt, controlled_axes);
@@ -89,12 +93,13 @@ int main(int argc, char ** argv)
                 rosnode.advertise<geometry_msgs::Wrench>(body_command_topic, 1);
 
         // default control
-
-        control_node.param("config/body/default", body_mode, body_mode);
-        if(body_mode == "velocity")
+    if(priv.hasParam("body_control"))
+        priv.getParam("body_control", default_mode);
+        if(default_mode == "velocity")
             body_pid.initVelocityControl();
-        else if(body_mode == "depth")
+        else if(default_mode == "depth")
             body_pid.initDepthControl();
+        ss << controlled_axes.size() << " controlled axes (" << default_mode << " control)";
     }
 
     // -- Init joints ------------------
@@ -116,16 +121,22 @@ int main(int argc, char ** argv)
 
         // command
         joint_command_publisher = rosnode.advertise<sensor_msgs::JointState>(joint_command_topic, 1);
+
+        default_mode = "position";
+        if(priv.hasParam("joint_control"))
+            priv.getParam("joint_control", default_mode);
+            if(default_mode == "velocity")
+                joint_pid.initVelocityControl();
     }
 
     std::vector<std::string> joint_names;
     if(control_joints)
+    {
         control_node.getParam("config/joints/name", joint_names);
+        ss << ", " << joint_names.size() << " joints (" << default_mode << " control)";
+    }
 
-    ROS_INFO("Init PID control for %s: %i body axes (%s control), %i joints (%s control)",
-             rosnode.getNamespace().c_str(),
-             (int) controlled_axes.size(),body_mode.c_str(),
-             (int) joint_names.size(),joint_mode.c_str());
+    ROS_INFO("%s", ss.str().c_str());
 
     while(ros::ok())
     {

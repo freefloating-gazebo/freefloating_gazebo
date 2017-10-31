@@ -10,8 +10,9 @@
 #include <gazebo/physics/World.hh>
 #include <gazebo/physics/PhysicsEngine.hh>
 #include <gazebo/math/Pose.hh>
-
 #include <freefloating_gazebo/freefloating_gazebo_control.h>
+#include <chrono>
+#include <thread>
 
 using std::cout;
 using std::endl;
@@ -54,14 +55,79 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     // get surface Z
     rosnode_.getParam("/gazebo/surface", z_surface_);
 
-    // check for body or joint param
-    control_body_ = false;
-    control_joints_ = false;
+    // look for thrusters
+    if(_sdf->HasElement("link"))
+        body_ = model_->GetLink(_sdf->Get<std::string>("link"));
+    else
+        body_ = model_->GetLinks()[0];
 
-    while(!(control_body_ || control_joints_))
+    // parse thruster elements
+    thruster_names_.clear();
+    thruster_links_.clear();
+    thruster_fixed_idx_.clear();
+    thruster_steer_idx_.clear();
+    thruster_map_.resize(6,0);
+    double map_coef;
+    sdf::ElementPtr sdf_element = _sdf->GetFirstElement();
+    while(sdf_element)
     {
-        control_body_ = control_node.hasParam("config/body");
-        control_joints_ = control_node.hasParam("config/joints");
+        if(sdf_element->GetName() == "thruster")
+        {
+            // check if it is a steering or fixed thruster
+            if(sdf_element->HasElement("map"))  // fixed
+            {
+                // add this index to fixed thrusters
+                thruster_fixed_idx_.push_back(thruster_names_.size());
+
+                // register map coefs
+                std::stringstream ss(sdf_element->Get<std::string>("map"));
+                const unsigned int nb = thruster_map_.cols();
+                thruster_map_.conservativeResize(6,nb+1);
+                for(int i=0;i<6;++i)
+                {
+                    ss >> map_coef;
+                    thruster_map_(i,nb) = map_coef;
+                }
+
+                // check for any name
+                if(sdf_element->HasElement("name"))
+                    thruster_names_.push_back(sdf_element->Get<std::string>("name"));
+                else
+                {
+                    std::ostringstream name;
+                    name << "thr" << thruster_names_.size();
+                    thruster_names_.push_back(name.str());
+                }
+
+                ROS_INFO("Adding %s as a fixed thruster", thruster_names_[thruster_names_.size()-1].c_str());
+            }
+            else if(sdf_element->HasElement("name"))
+            {
+                // add this index to steering thrusters
+                thruster_steer_idx_.push_back(thruster_names_.size());
+
+                // add the link name
+                thruster_names_.push_back(sdf_element->Get<std::string>("name"));
+
+                // find and register corresponding link
+                thruster_links_.push_back(model_->GetLink(sdf_element->Get<std::string>("name")));
+
+                ROS_INFO("Adding %s as a steering thruster", thruster_names_[thruster_names_.size()-1].c_str());
+            }
+
+            // register maximum effort
+            if(sdf_element->HasElement("effort"))
+                thruster_max_command_.push_back(sdf_element->Get<double>("effort"));
+            else
+                thruster_max_command_.push_back(100);
+        }
+        sdf_element = sdf_element->GetNextElement();
+    }
+    control_body_ = true;
+    if(!thruster_names_.size())
+    {
+        ROS_INFO("No thrusters found in %s", _model->GetName().c_str());
+        control_body_ = false;
     }
 
     // *** SET UP BODY CONTROL
@@ -74,86 +140,14 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         control_node.param("config/body/command", body_command_topic, std::string("body_command"));
         control_node.param("config/body/state", body_state_topic, std::string("body_state"));
 
-        // read control type: thruster vs wrench
-        wrench_control_ = true;
-        if(control_node.hasParam("config/body/control_type"))
+        // guess control type from PID gains (gains -> wrench control)
+        wrench_control_ = false;
+        for(auto axe: {"x", "y", "z", "roll", "pitch","yaw"})
         {
-            string control_type;
-            control_node.getParam("config/body/control_type", control_type);
-            if(control_type == "thruster")
-            {
-                wrench_control_ = false;
-                body_command_topic = "thruster_command";
-            }
+            if(control_node.hasParam(axe))
+                wrench_control_ = true;
         }
 
-        if(_sdf->HasElement("link"))
-            body_ = model_->GetLink(_sdf->Get<std::string>("link"));
-        else
-            body_ = model_->GetLinks()[0];
-
-        // parse thruster elements
-        thruster_names_.clear();
-        thruster_links_.clear();
-        thruster_fixed_idx_.clear();
-        thruster_steer_idx_.clear();
-        thruster_map_.resize(6,0);
-        double map_coef;
-        sdf::ElementPtr sdf_element = _sdf->GetFirstElement();
-        while(sdf_element)
-        {
-            if(sdf_element->GetName() == "thruster")
-            {
-                // check if it is a steering or fixed thruster
-                if(sdf_element->HasElement("map"))  // fixed
-                {
-                    // add this index to fixed thrusters
-                    thruster_fixed_idx_.push_back(thruster_names_.size());
-
-                    // register map coefs
-                    std::stringstream ss(sdf_element->Get<std::string>("map"));
-                    const unsigned int nb = thruster_map_.cols();
-                    thruster_map_.conservativeResize(6,nb+1);
-                    for(i=0;i<6;++i)
-                    {
-                        ss >> map_coef;
-                        thruster_map_(i,nb) = map_coef;
-                    }
-
-                    // check for any name
-                    if(sdf_element->HasElement("name"))
-                        thruster_names_.push_back(sdf_element->Get<std::string>("name"));
-                    else
-                    {
-                        std::ostringstream name;
-                        name << "thr" << thruster_names_.size();
-                        thruster_names_.push_back(name.str());
-                    }
-
-                    ROS_INFO("Adding %s as a fixed thruster", thruster_names_[thruster_names_.size()-1].c_str());
-                }
-                else if(sdf_element->HasElement("name"))
-                {
-                    // add this index to steering thrusters
-                    thruster_steer_idx_.push_back(thruster_names_.size());
-
-                    // add the link name
-                    thruster_names_.push_back(sdf_element->Get<std::string>("name"));
-
-                    // find and register corresponding link
-                    thruster_links_.push_back(model_->GetLink(sdf_element->Get<std::string>("name")));
-
-                    ROS_INFO("Adding %s as a steering thruster", thruster_names_[thruster_names_.size()-1].c_str());
-                }
-
-                // register maximum effort
-                if(sdf_element->HasElement("effort"))
-                    thruster_max_command_.push_back(sdf_element->Get<double>("effort"));
-                else
-                    thruster_max_command_.push_back(100);
-            }
-            sdf_element = sdf_element->GetNextElement();
-        }
         // check consistency
         if(wrench_control_ && thruster_steer_idx_.size())
         {
@@ -232,6 +226,9 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
     // *** JOINT CONTROL
     joints_.clear();
+    // check for joint param
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    control_joints_ = control_node.hasParam("config/joints");
 
     if(control_joints_ && model_->GetJointCount() != 0)
     {

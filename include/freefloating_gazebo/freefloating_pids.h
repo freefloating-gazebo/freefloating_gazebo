@@ -7,6 +7,7 @@
 #include <ros/duration.h>
 #include <ros/service_server.h>
 #include <std_srvs/Empty.h>
+#include <freefloating_gazebo/butterworth.h>
 
 class FreeFloatingPids
 {
@@ -21,6 +22,7 @@ protected:
         double* error_ptr;
         double* command_ptr;
         control_toolbox::Pid pid;
+
     };
 
 public:

@@ -140,12 +140,22 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         control_node.param("config/body/command", body_command_topic, std::string("body_command"));
         control_node.param("config/body/state", body_state_topic, std::string("body_state"));
 
-        // guess control type from PID gains (gains -> wrench control)
+
         wrench_control_ = false;
-        for(auto axe: {"x", "y", "z", "roll", "pitch","yaw"})
+        // get control type (wrench / thruster) if explicit
+        if(control_node.hasParam("config/body/type"))
         {
-            if(control_node.hasParam(axe))
-                wrench_control_ = true;
+            std::string control_type;
+            control_node.getParam("config/body/type", control_type);
+            wrench_control_ = (control_type == "wrench");
+        }
+        else   // guess control type from PID gains (gains assume wrench control)
+        {
+            for(auto axe: {"x", "y", "z", "roll", "pitch","yaw"})
+            {
+                if(control_node.hasParam(axe))
+                    wrench_control_ = true;
+            }
         }
 
         // check consistency
@@ -183,7 +193,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         // if wrench control, compute map pseudo-inverse and help PID's with maximum forces by axes
         std::string axe[] = {"x", "y", "z", "roll", "pitch", "yaw"};
         std::vector<std::string> controlled_axes;
-        if(thruster_fixed_idx_.size() && !thruster_steer_idx_.size())
+        if(wrench_control_ && thruster_fixed_idx_.size() && !thruster_steer_idx_.size())
         {
             ComputePseudoInverse(thruster_map_, thruster_inverse_map_);
 

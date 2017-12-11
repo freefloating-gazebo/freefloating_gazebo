@@ -13,7 +13,8 @@ int main(int argc, char ** argv)
     ros::NodeHandle control_node(rosnode, "controllers");
     ros::NodeHandle priv("~");
 
-    // wait for body or joint param
+    // wait for Gazebo running
+    ros::service::waitForService("/gazebo/unpause_physics");
     bool control_body = false;
     bool control_joints = false;
     while(!(control_body || control_joints))

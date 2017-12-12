@@ -63,6 +63,8 @@ void FreeFloatingPids::InitPID(control_toolbox::Pid &_pid, const ros::NodeHandle
 {
     if(_use_dynamic_reconfig)
     {
+        // write anti windup
+        _node.setParam("antiwindup", true);
         // classical PID init
         _pid.init(_node);
     }

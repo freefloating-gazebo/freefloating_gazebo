@@ -166,6 +166,8 @@ if __name__ == '__main__':
         Fmax = np.amax(np.array(Fmax),0)        
         
         # plot for x velocity
+        
+        
         vmax = np.sqrt(Fmax[0]/damping[0])
         vstar = vmax/2
         sd, = ax.plot([t[0],t[-1]], [vstar,vstar], lw=2, color='red')
@@ -208,19 +210,22 @@ if __name__ == '__main__':
         sKp.on_changed(update)
         sKi.on_changed(update)
         sKd.on_changed(update)
+        
+        def save_config(val):
+            for i,a in body_axis.iteritems():
+                pid[a] = {}
+                for controller in ['position', 'velocity']:
+                    pid[a][controller] = {'p': p_default, 'i': i_default, 'd': d_default}
+            # write config
+            if len(joints) + len(thrusters) != 0:
+                with open(config_file, 'w') as f:
+                    yaml.dump({'controllers': pid}, f)
+                print 'controller written in', config_file   
+        button.on_clicked(save_config)
                 
         plt.show()
         update(0)
                 
-        for i,a in body_axis.iteritems():
-            pid[a] = {}
-                                                
-            for controller in ['position', 'velocity']:
-                pid[a][controller] = {'p': p_default, 'i': i_default, 'd': d_default}
-        
-    # write config
-    if len(joints) + len(thrusters) != 0:
-        with open(config_file, 'w') as f:
-            yaml.dump({'controllers': pid}, f)
-        print 'controller written in', config_file
+
+
         

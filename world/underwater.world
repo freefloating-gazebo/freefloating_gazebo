@@ -12,6 +12,7 @@
               <alwaysOn>true</alwaysOn>
               <surface>0 0 0</surface>
               <updateRate>.001</updateRate>
-          </plugin>
+          </plugin>                               
+    
   </world>
 </sdf>

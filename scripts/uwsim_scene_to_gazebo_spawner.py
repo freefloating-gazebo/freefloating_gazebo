@@ -233,7 +233,7 @@ def process_vehicles(vehicles, datapath):
               
     return vehicle_nodes
     
-def process_objects(objcts, datapath):
+def process_objects(objects, datapath):
     '''
     Looks for the objects' mesh files in uwsim datapath
     Creates corresponding urdf for Gazebo
@@ -242,7 +242,7 @@ def process_objects(objcts, datapath):
     
     gazebo_mesh_ext = ['.stl', '.dae']
     object_nodes = []
-    for obj in scene_xml.findall('object'):
+    for obj in objects:
         name = obj.findtext('name')
         uwsim_mesh_file = obj.findtext('file')
         

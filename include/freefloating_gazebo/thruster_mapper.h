@@ -1,10 +1,8 @@
 #ifndef MAPPER_H
 #define MAPPER_H
 
-#include <sdf/parser.hh>
+#include <sdf/Element.hh>
 #include <Eigen/Core>
-#include <gazebo/physics/Link.hh>
-#include <gazebo/math/Vector3.hh>
 #include <ros/ros.h>
 
 namespace ffg
@@ -18,22 +16,11 @@ public:
 
     }
 
-    void readVector3(const std::string &_string, gazebo::math::Vector3 &_vector)
-    {
-        std::stringstream ss(_string);
-        double xyz[3];
-        for(unsigned int i=0;i<3;++i)
-            ss >> xyz[i];
-        _vector.Set(xyz[0], xyz[1], xyz[2]);
-    }
 
 
-    void parse(gazebo::physics::ModelPtr &_model,
-               sdf::ElementPtr &_sdf,
-               std::vector<gazebo::physics::LinkPtr> &_links)
+    void parse(sdf::ElementPtr &_sdf)
     {
         names.clear();
-        _links.clear();
         fixed_idx.clear();
         steer_idx.clear();
         max_command.clear();
@@ -79,9 +66,6 @@ public:
 
                     // add the link name
                     names.push_back(sdf_element->Get<std::string>("name"));
-
-                    // find and register corresponding link
-                    _links.push_back(_model->GetLink(sdf_element->Get<std::string>("name")));
 
                     ROS_INFO("Adding %s as a steering thruster", names[names.size()-1].c_str());
                 }

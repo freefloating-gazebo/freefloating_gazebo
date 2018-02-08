@@ -43,8 +43,8 @@ public:
 
         // compute output
         v = b[2]*x[2] +
-                b[1]*x[1] + a[1]*y[1] +
-                b[0]*x[0] + a[0]*y[0];
+            b[1]*x[1] + a[1]*y[1] +
+            b[0]*x[0] + a[0]*y[0];
 
         // swap output
         y[1] = y[0];
@@ -59,7 +59,7 @@ protected:
 };
 
 
-// same but for nD-variables (std::vectors, Eigen lib vectores...)
+// same but for nD-variables (std::vectors, Eigen lib vectors...)
 
 class Butterworth_nD
 {

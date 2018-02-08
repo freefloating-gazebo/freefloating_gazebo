@@ -53,7 +53,11 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         body_ = model_->GetLinks()[0];
 
     // parse thruster elements
-    mapper_.parse(_model, _sdf, thruster_links_);
+    mapper_.parse(_sdf);
+    // add steering thrusters if any
+    thruster_links_.clear();
+    for(auto name: mapper_.names)
+        thruster_links_.push_back(_model->GetLink(name));
 
 
     control_body_ = true;

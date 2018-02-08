@@ -13,6 +13,7 @@
 #include <std_srvs/Empty.h>
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/SVD>
+#include <freefloating_gazebo/thruster_mapper.h>
 
 namespace gazebo
 {
@@ -32,8 +33,7 @@ public:
     virtual void Update();
 
 private:
-    // parse a Vector3 string
-    void ReadVector3(const std::string &_string, math::Vector3 &_vector);
+
     // parse received joint command (joint states)
     void JointCommandCallBack(const sensor_msgs::JointStateConstPtr &_msg)
     {
@@ -50,9 +50,6 @@ private:
     // parse switch service
     bool SwitchService(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res);
 
-    // no pseudo-inverse in Eigen ?
-    void ComputePseudoInverse(const Eigen::MatrixXd &_M, Eigen::MatrixXd &_pinv_M);
-
 private:
     // -- general data ----------------------------------------
     std::string robot_namespace_;
@@ -68,15 +65,11 @@ private:
     // -- body control ----------------------------------------
     // model body data
     physics::LinkPtr body_;
-    Eigen::MatrixXd thruster_map_;
-    Eigen::MatrixXd thruster_inverse_map_;
-    std::vector<double> thruster_max_command_;
     bool control_body_, wrench_control_;
 
     // thruster control
-    std::vector<unsigned int> thruster_steer_idx_, thruster_fixed_idx_;
+    ffg::ThrusterMapper mapper_;
     std::vector<physics::LinkPtr> thruster_links_;
-    std::vector<std::string> thruster_names_;
     Eigen::VectorXd thruster_command_;
 
     // subscriber

@@ -51,14 +51,18 @@ add_library(freefloating_gazebo_fluid src/freefloating_gazebo_fluid.cpp include/
 target_link_libraries(freefloating_gazebo_fluid ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
 # model plugin subscribes to body and joint efforts and applies them in Gazebo
-add_library(freefloating_gazebo_control src/freefloating_gazebo_control.cpp include/freefloating_gazebo/freefloating_gazebo_control.h)
+add_library(freefloating_gazebo_control src/freefloating_gazebo_control.cpp
+                                        include/freefloating_gazebo/freefloating_gazebo_control.h
+                                        include/freefloating_gazebo/thruster_mapper.h)
 target_link_libraries(freefloating_gazebo_control ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
 # node to perform PID control for body (thrusters) and joints
-add_executable(pid_control src/freefloating_pids_main.cpp include/freefloating_gazebo/butterworth.h
-src/freefloating_pids.cpp include/freefloating_gazebo/freefloating_pids.h
-src/freefloating_pids_body.cpp include/freefloating_gazebo/freefloating_pids_body.h
-src/freefloating_pids_joint.cpp include/freefloating_gazebo/freefloating_pids_joint.h)
+add_executable(pid_control src/freefloating_pids_main.cpp
+    include/freefloating_gazebo/butterworth.h
+    include/freefloating_gazebo/thruster_mapper.h
+    src/freefloating_pids.cpp include/freefloating_gazebo/freefloating_pids.h
+    src/freefloating_pids_body.cpp include/freefloating_gazebo/freefloating_pids_body.h
+    src/freefloating_pids_joint.cpp include/freefloating_gazebo/freefloating_pids_joint.h)
 target_link_libraries(pid_control ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES})
 
 # test Butterworth filter

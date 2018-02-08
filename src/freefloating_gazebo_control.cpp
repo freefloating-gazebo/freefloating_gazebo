@@ -21,15 +21,6 @@ using std::string;
 namespace gazebo
 {
 
-void FreeFloatingControlPlugin::ReadVector3(const std::string &_string, math::Vector3 &_vector)
-{
-    std::stringstream ss(_string);
-    double xyz[3];
-    for(unsigned int i=0;i<3;++i)
-        ss >> xyz[i];
-    _vector.Set(xyz[0], xyz[1], xyz[2]);
-}
-
 bool FreeFloatingControlPlugin::SwitchService(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
 {
     if(controller_is_running_)
@@ -62,69 +53,11 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         body_ = model_->GetLinks()[0];
 
     // parse thruster elements
-    thruster_names_.clear();
-    thruster_links_.clear();
-    thruster_fixed_idx_.clear();
-    thruster_steer_idx_.clear();
-    thruster_map_.resize(6,0);
-    double map_coef;
-    sdf::ElementPtr sdf_element = _sdf->GetFirstElement();
-    while(sdf_element)
-    {
-        if(sdf_element->GetName() == "thruster")
-        {
-            // check if it is a steering or fixed thruster
-            if(sdf_element->HasElement("map"))  // fixed
-            {
-                // add this index to fixed thrusters
-                thruster_fixed_idx_.push_back(thruster_names_.size());
+    mapper_.parse(_model, _sdf, thruster_links_);
 
-                // register map coefs
-                std::stringstream ss(sdf_element->Get<std::string>("map"));
-                const unsigned int nb = thruster_map_.cols();
-                thruster_map_.conservativeResize(6,nb+1);
-                for(int i=0;i<6;++i)
-                {
-                    ss >> map_coef;
-                    thruster_map_(i,nb) = map_coef;
-                }
 
-                // check for any name
-                if(sdf_element->HasElement("name"))
-                    thruster_names_.push_back(sdf_element->Get<std::string>("name"));
-                else
-                {
-                    std::ostringstream name;
-                    name << "thr" << thruster_names_.size();
-                    thruster_names_.push_back(name.str());
-                }
-
-                ROS_INFO("Adding %s as a fixed thruster", thruster_names_[thruster_names_.size()-1].c_str());
-            }
-            else if(sdf_element->HasElement("name"))
-            {
-                // add this index to steering thrusters
-                thruster_steer_idx_.push_back(thruster_names_.size());
-
-                // add the link name
-                thruster_names_.push_back(sdf_element->Get<std::string>("name"));
-
-                // find and register corresponding link
-                thruster_links_.push_back(model_->GetLink(sdf_element->Get<std::string>("name")));
-
-                ROS_INFO("Adding %s as a steering thruster", thruster_names_[thruster_names_.size()-1].c_str());
-            }
-
-            // register maximum effort
-            if(sdf_element->HasElement("effort"))
-                thruster_max_command_.push_back(sdf_element->Get<double>("effort"));
-            else
-                thruster_max_command_.push_back(100);
-        }
-        sdf_element = sdf_element->GetNextElement();
-    }
     control_body_ = true;
-    if(!thruster_names_.size())
+    if(!mapper_.names.size())
     {
         ROS_INFO("No thrusters found in %s", _model->GetName().c_str());
         control_body_ = false;
@@ -139,7 +72,6 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         // read topics
         control_node.param("config/body/command", body_command_topic, std::string("body_command"));
         control_node.param("config/body/state", body_state_topic, std::string("body_state"));
-
 
         wrench_control_ = false;
         // get control type (wrench / thruster) if explicit
@@ -159,17 +91,17 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         }
 
         // check consistency
-        if(wrench_control_ && thruster_steer_idx_.size())
+        if(wrench_control_ && mapper_.steer_idx.size())
         {
             ROS_WARN("%s has steering thrusters and cannot be controlled with wrench", model_->GetName().c_str());
             wrench_control_ = false;
         }
 
         // initialize subscriber to body commands
-        thruster_command_.resize(thruster_names_.size());
+        thruster_command_.resize(mapper_.names.size());
         // initialize publisher to thruster_use
-        thruster_use_.name = thruster_names_;
-        thruster_use_.position.resize(thruster_max_command_.size());
+        thruster_use_.name = mapper_.names;
+        thruster_use_.position.resize(mapper_.names.size());
         thruster_use_publisher_ = rosnode_.advertise<sensor_msgs::JointState>("thruster_use", 1);
 
         ros::SubscribeOptions ops;
@@ -191,36 +123,11 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         body_command_received_ = false;
 
         // if wrench control, compute map pseudo-inverse and help PID's with maximum forces by axes
-        std::string axe[] = {"x", "y", "z", "roll", "pitch", "yaw"};
+        std::vector<std::string> axe = {"x", "y", "z", "roll", "pitch", "yaw"};
         std::vector<std::string> controlled_axes;
-        if(wrench_control_ && thruster_fixed_idx_.size() && !thruster_steer_idx_.size())
+        if(wrench_control_ && mapper_.fixed_idx.size() && !mapper_.steer_idx.size())
         {
-            ComputePseudoInverse(thruster_map_, thruster_inverse_map_);
-
-            // push control data to parameter server
-            control_node.setParam("config/body/link", body_->GetName());
-
-            unsigned int thr_i, dir_i;
-
-            // compute max force in each direction, writes controlled axes
-            double thruster_max_effort;
-
-            for(dir_i=0;dir_i<6;++dir_i)
-            {
-                thruster_max_effort = 0;
-                for(thr_i=0;thr_i<thruster_fixed_idx_.size();++thr_i)
-                    thruster_max_effort += thruster_max_command_[thruster_fixed_idx_[thr_i]] * std::abs(thruster_map_(dir_i,thr_i));
-                if(thruster_max_effort != 0)
-                {
-                    controlled_axes.push_back(axe[dir_i]);
-                    // push to position PID
-                    sprintf(param, "%s/position/i_clamp", axe[dir_i].c_str());
-                    control_node.setParam(param, thruster_max_effort);
-                    // push to velocity PID
-                    sprintf(param, "%s/velocity/i_clamp", axe[dir_i].c_str());
-                    control_node.setParam(param, thruster_max_effort);
-                }
-            }
+            mapper_.initWrenchControl(control_node, body_->GetName(), axe, controlled_axes);
         }
         else
         {
@@ -351,36 +258,31 @@ void FreeFloatingControlPlugin::Update()
         // deal with body control if underwater
         if(control_body_ && body_command_received_ && (body_->GetWorldCoGPose().pos.z < z_surface_))
         {
-            // saturate thruster use
-            double norm_ratio = 1;
-            unsigned int i;
-            for(i=0;i<thruster_fixed_idx_.size();++i)
-                norm_ratio = std::max(norm_ratio, std::abs(thruster_command_(i)) / thruster_max_command_[i]);
-            thruster_command_ *= 1./norm_ratio;
+            mapper_.saturate(thruster_command_);
 
             // build and apply wrench for fixed thrusters
-            if(thruster_fixed_idx_.size())
+            if(mapper_.fixed_idx.size())
             {
-                Eigen::VectorXd fixed(thruster_fixed_idx_.size());
-                for(unsigned int i=0;i<thruster_fixed_idx_.size();++i)
-                    fixed(i) = thruster_command_(thruster_fixed_idx_[i]);
+                Eigen::VectorXd fixed(mapper_.fixed_idx.size());
+                for(unsigned int i=0;i<mapper_.fixed_idx.size();++i)
+                    fixed(i) = thruster_command_(mapper_.fixed_idx[i]);
                 // to wrench
-                fixed = thruster_map_ * fixed;
+                fixed = mapper_.map * fixed;
                 // apply this wrench to body
                 body_->AddForceAtWorldPosition(body_->GetWorldPose().rot.RotateVector(math::Vector3(fixed(0), fixed(1), fixed(2))), body_->GetWorldCoGPose().pos);
                 body_->AddRelativeTorque(math::Vector3(fixed(3), fixed(4), fixed(5)));
             }
 
             // apply command for steering thrusters
-            if(thruster_steer_idx_.size())
+            if(mapper_.steer_idx.size())
             {
-                for(unsigned int i=0;i<thruster_steer_idx_.size();++i)
-                    thruster_links_[i]->AddRelativeForce(math::Vector3(0,0,-thruster_command_(thruster_steer_idx_[i])));
+                for(unsigned int i=0;i<mapper_.steer_idx.size();++i)
+                    thruster_links_[i]->AddRelativeForce(math::Vector3(0,0,-thruster_command_(mapper_.steer_idx[i])));
             }
 
             // compute and publish thruster use in %
-            for(i=0;i<thruster_command_.size();++i)
-                thruster_use_.position[i] = 100*std::abs(thruster_command_(i) / thruster_max_command_[i]);
+            for(int i=0;i<thruster_command_.size();++i)
+                thruster_use_.position[i] = 100*std::abs(thruster_command_(i) / mapper_.max_command[i]);
             thruster_use_publisher_.publish(thruster_use_);
         }
     }
@@ -402,23 +304,6 @@ void FreeFloatingControlPlugin::Update()
 }
 
 
-void FreeFloatingControlPlugin::ComputePseudoInverse(const Eigen::MatrixXd &_M, Eigen::MatrixXd &_pinv_M)
-{
-    _pinv_M.resize(_M.cols(), _M.rows());
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd_M(_M, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    Eigen::VectorXd dummy_in;
-    Eigen::VectorXd dummy_out(_M.cols());
-    unsigned int i,j;
-    for(i=0;i<_M.rows();++i)
-    {
-        dummy_in = Eigen::VectorXd::Zero(_M.rows());
-        dummy_in(i) = 1;
-        dummy_out = svd_M.solve(dummy_in);
-        for(j = 0; j<_M.cols();++j)
-            _pinv_M(j,i) = dummy_out(j);
-    }
-}
-
 void FreeFloatingControlPlugin::BodyCommandCallBack(const geometry_msgs::WrenchConstPtr &_msg)
 {
     if(!control_body_)
@@ -429,7 +314,7 @@ void FreeFloatingControlPlugin::BodyCommandCallBack(const geometry_msgs::WrenchC
     Eigen::VectorXd body_command(6);
     body_command << _msg->force.x, _msg->force.y, _msg->force.z, _msg->torque.x, _msg->torque.y, _msg->torque.z;
 
-    thruster_command_ = thruster_inverse_map_ * body_command;
+    thruster_command_ = mapper_.inverse_map * body_command;
 }
 
 
@@ -454,11 +339,11 @@ void FreeFloatingControlPlugin::ThrusterCommandCallBack(const sensor_msgs::Joint
 
     body_command_received_ = true;
     // store thruster command
-    for(unsigned int i=0;i<thruster_names_.size();++i)
+    for(unsigned int i=0;i<mapper_.names.size();++i)
     {
         for(unsigned int j=0;j<_msg->name.size();++j)
         {
-            if(thruster_names_[i] == _msg->name[j])
+            if(mapper_.names[i] == _msg->name[j])
                 thruster_command_(i) = read_effort?_msg->effort[j]:_msg->position[j];
         }
     }

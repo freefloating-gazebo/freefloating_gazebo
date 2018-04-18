@@ -28,4 +28,4 @@ The examples can be downloaded from the freefloating_gazebo_demo package.
 
 Please use the following reference when citing this work:
 
-[O. Kermorgant, "A dynamic simulator for underwater vehicle-manipulators", International Conference on Simulatation, Modeling and Programming for Autonomous Robots SIMPAR 2014, Oct 2014](https://hal.inria.fr/hal-01065812)
+[O. Kermorgant, "A dynamic simulator for underwater vehicle-manipulators", International Conference on Simulatation, Modeling and Programming for Autonomous Robots SIMPAR 2014, Oct 2014](https://hal.archives-ouvertes.fr/hal-01065812)

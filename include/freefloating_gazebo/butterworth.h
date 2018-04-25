@@ -12,7 +12,6 @@ class Butterworth
 public:
     Butterworth() {}
 
-
     Butterworth(double frequency, double dt)
     {
         init(frequency, dt);

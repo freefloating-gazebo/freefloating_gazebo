@@ -5,7 +5,9 @@ using std::endl;
 using std::string;
 
 
-void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt, const std::vector<std::string>&_controlled_axes)
+void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt,
+                                const std::vector<std::string>&_controlled_axes,
+                                std::string default_mode)
 {
     pid_node_ = _node;
     // init dt from rate
@@ -15,6 +17,7 @@ void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt,
     const unsigned int n = _controlled_axes.size();
     position_pids_.resize(n);
     velocity_pids_.resize(n);
+    axes_ = _controlled_axes;
 
     std::string axes[] = {"x", "y", "z", "roll", "pitch", "yaw"};
 
@@ -24,13 +27,11 @@ void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt,
 
     for(unsigned int i=0;i<n;++i)
     {
-        unsigned int j;
-        for(j=0;j<6;++j)
-        {
-            if(_controlled_axes[i] == axes[j])
-                break;
-        }
-        // here we have the controlled axe
+        unsigned int j = 0;
+        while(_controlled_axes[i] != axes[j] && j < 6)
+            j++;
+
+        // here we have the controlled axis
         switch(j)
         {
         case 0:
@@ -69,17 +70,36 @@ void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt,
         InitPID(velocity_pids_[i].pid, ros::NodeHandle(_node, axes[j] + "/velocity"), use_dynamic_reconfig);
     }
 
-    InitSwitchServices("body");
+    // default control = position
+    CTreq req;
+    CTres res;    
 
+    if(default_mode == "velocity")
+    {
+        ToVelocityControl(req, res);
+    }
+    else if(default_mode == "depth")
+    {
+        req.axes = {"x", "y", "yaw"};
+        ToVelocityControl(req, res);
+    }
+    else if(default_mode == "effort")
+    {
+        req.axes = {"x", "y", "z", "yaw"};
+        ToEffortControl(req, res);
+    }
+    else
+        ToPositionControl(req, res);
+
+    initSwitchServices("body");
 }
-
 
 
 bool FreeFloatingBodyPids::UpdatePID()
 {
-    if(setpoint_received_ && state_received_)
+    if(state_received_)
     {
-        if(control_type_ == POSITION_CONTROL)
+        if(setpoint_position_ok_ && position_used_)    // setpoint & need for position PID
         {
             Eigen::Matrix3d world_to_body = pose_ang_measure_inv_.toRotationMatrix();
             // express pose error in the body frame
@@ -98,7 +118,8 @@ bool FreeFloatingBodyPids::UpdatePID()
             }
             UpdatePositionPID();
         }
-        else
+
+        if(setpoint_velocity_ok_ && velocity_used_)
         {
             // velocity error is already in the body frame
             velocity_lin_error_ =  velocity_lin_setpoint_ - velocity_lin_measure_;
@@ -109,13 +130,6 @@ bool FreeFloatingBodyPids::UpdatePID()
             UpdateVelocityPID();
         }
 
-        if(control_type_ == DEPTH_CONTROL)
-        {   // depth control = erase velocity z and replace with position
-            Eigen::Matrix3d world_to_body = pose_ang_measure_inv_.toRotationMatrix();
-            // express pose error in the body frame
-            pose_lin_error_ = world_to_body * (pose_lin_setpoint_ - pose_lin_measure_);
-            UpdatePositionPID({2});
-        }
         return true;
     }
 
@@ -126,8 +140,7 @@ bool FreeFloatingBodyPids::UpdatePID()
 // parse received position setpoint
 void FreeFloatingBodyPids::PositionSPCallBack(const geometry_msgs::PoseStampedConstPtr& _msg)
 {
-    if(control_type_ != VELOCITY_CONTROL)
-        setpoint_received_ = true;
+    setpoint_position_ok_ = true;
 
     pose_lin_setpoint_ = Eigen::Vector3d(_msg->pose.position.x, _msg->pose.position.y, _msg->pose.position.z);
     pose_ang_setpoint_ = Eigen::Quaterniond(_msg->pose.orientation.w, _msg->pose.orientation.x, _msg->pose.orientation.y, _msg->pose.orientation.z);
@@ -136,8 +149,8 @@ void FreeFloatingBodyPids::PositionSPCallBack(const geometry_msgs::PoseStampedCo
 // parse received velocity setpoint
 void FreeFloatingBodyPids::VelocitySPCallBack(const geometry_msgs::TwistStampedConstPtr & _msg)
 {
-    if(control_type_ != POSITION_CONTROL)
-        setpoint_received_ = true;
+    setpoint_velocity_ok_ = true;
+
     velocity_lin_setpoint_ = Eigen::Vector3d(_msg->twist.linear.x, _msg->twist.linear.y, _msg->twist.linear.z);
     velocity_ang_setpoint_ = Eigen::Vector3d(_msg->twist.angular.x, _msg->twist.angular.y, _msg->twist.angular.z);
 }
@@ -153,5 +166,4 @@ void FreeFloatingBodyPids::MeasureCallBack(const nav_msgs::OdometryConstPtr &_ms
     // change velocities from world to body frame
     velocity_lin_measure_ = pose_ang_measure_inv_.toRotationMatrix()*Eigen::Vector3d(_msg->twist.twist.linear.x, _msg->twist.twist.linear.y, _msg->twist.twist.linear.z);
     velocity_ang_measure_ = pose_ang_measure_inv_.toRotationMatrix()*Eigen::Vector3d(_msg->twist.twist.angular.x, _msg->twist.twist.angular.y, _msg->twist.twist.angular.z);
-
 }

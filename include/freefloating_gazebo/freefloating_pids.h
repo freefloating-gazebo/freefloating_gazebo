@@ -6,49 +6,46 @@
 #include <control_toolbox/filters.h>
 #include <ros/duration.h>
 #include <ros/service_server.h>
-#include <std_srvs/Empty.h>
+#include <freefloating_gazebo/ControlType.h>
 #include <freefloating_gazebo/butterworth.h>
 
 class FreeFloatingPids
 {
 protected:
-    typedef enum
-    {
-        EFFORT_CONTROL, VELOCITY_CONTROL, POSITION_CONTROL, DEPTH_CONTROL
-    } control_type;
+
+    typedef freefloating_gazebo::ControlTypeRequest CTreq;
+    typedef freefloating_gazebo::ControlTypeResponse CTres;
 
     struct pid_st
     {
         double* error_ptr;
         double* command_ptr;
-        control_toolbox::Pid pid;
-
+        control_toolbox::Pid pid;        
+        bool active;
+        void updateCommand(const ros::Duration &dt)
+        {
+            if(active)
+                *command_ptr = pid.computeCommand(*error_ptr, dt);
+        }
     };
 
 public:
     FreeFloatingPids();
-    ~FreeFloatingPids() {}
-    void initVelocityControl()
-    {
-        control_type_ = VELOCITY_CONTROL;
-    }    
 
     // these updates do no check about the pointers
-    void UpdatePositionPID(std::vector<int> idx = std::vector<int>());
-    void UpdateVelocityPID(std::vector<int> idx = std::vector<int>());
-
-protected:
+    void UpdatePositionPID();
+    void UpdateVelocityPID();
 
     // service to switch controllers
-    bool ToPositionControl(std_srvs::EmptyRequest &_req, std_srvs::EmptyResponse &_res);
-    bool ToVelocityControl(std_srvs::EmptyRequest &_req, std_srvs::EmptyResponse &_res);
+    bool ToPositionControl(CTreq _req, CTres &_res);
+    bool ToVelocityControl(CTreq _req, CTres &_res);
+    bool ToEffortControl(CTreq _req, CTres &_res);
+    void printControlType();
 
-    void InitSwitchServices(const std::string &_name)
-    {
-        control_type_ = POSITION_CONTROL;
-        position_service_ = pid_node_.advertiseService<std_srvs::EmptyRequest, std_srvs::EmptyResponse>(_name + "_position_control", boost::bind(&FreeFloatingPids::ToPositionControl, this, _1, _2));
-        velocity_service_ = pid_node_.advertiseService<std_srvs::EmptyRequest, std_srvs::EmptyResponse>(_name + "_velocity_control", boost::bind(&FreeFloatingPids::ToVelocityControl, this, _1, _2));
-    }
+    // init services base on prefix
+    void initSwitchServices(std::string name);
+
+protected:
 
     void InitPID(control_toolbox::Pid& _pid, const ros::NodeHandle&_node, const bool &_use_dynamic_reconfig);
 
@@ -57,15 +54,18 @@ protected:
 
 protected:
     ros::NodeHandle pid_node_;
-    ros::ServiceServer position_service_, velocity_service_;
+    std::vector<ros::ServiceServer> services_;
     ros::Duration dt_;
     std::vector<pid_st> position_pids_;
     std::vector<pid_st> velocity_pids_;
-    control_type control_type_;
+    std::vector<std::string> axes_;
     double error_filter;
-    bool setpoint_received_;
-    bool state_received_;
-
+    bool    setpoint_position_ok_ = false,
+            setpoint_velocity_ok_ = false,
+            state_received_ = false,
+            cascaded_position_ = false,
+            position_used_ = false,
+            velocity_used_ = false;
 };
 
 #endif // FREEFLOATINGPID_H

@@ -6,6 +6,8 @@
 #include <gazebo/physics/Link.hh>
 #include <gazebo/math/Vector3.hh>
 #include <ros/ros.h>
+#include <geometry_msgs/Wrench.h>
+#include <sensor_msgs/JointState.h>
 
 namespace ffg
 {
@@ -27,7 +29,18 @@ public:
         _vector.Set(xyz[0], xyz[1], xyz[2]);
     }
 
+    // parse raw param
+    // only for fixed thrusters (for now)
+    void parse()
+    {
+        gazebo::physics::ModelPtr model_dummy;
+        std::vector<gazebo::physics::LinkPtr> links_dummy;
 
+        //sdf::initString()
+
+    }
+
+    // parse for Gazebo
     void parse(gazebo::physics::ModelPtr &_model,
                sdf::ElementPtr &_sdf,
                std::vector<gazebo::physics::LinkPtr> &_links)
@@ -96,7 +109,6 @@ public:
         }
     }
 
-
     void initWrenchControl(ros::NodeHandle &_control_node,
                            std::string _body_name,
                            std::vector<std::string> &_axe,
@@ -151,6 +163,26 @@ public:
         for(i=0;i<fixed_idx.size();++i)
             norm_ratio = std::max(norm_ratio, std::abs(_command(i)) / max_command[i]);
         _command *= 1./norm_ratio;
+    }
+
+    void wrench2Thrusters(const geometry_msgs::Wrench  & cmd)
+    {
+        Eigen::VectorXd wrench(6);
+        wrench << cmd.force.x, cmd.force.y, cmd.force.z,
+                cmd.torque.x, cmd.torque.y, cmd.torque.z;
+        sensor_msgs::JointState msg;
+        msg.name = names;
+        msg.effort.reserve(names.size());
+
+        Eigen::VectorXd thrust = inverse_map * wrench;
+        saturate(thrust);
+
+        for(int i = 0; i < thrust.rows(); i++)
+        {
+            msg.effort.push_back(thrust[i]);
+        }
+
+
     }
 
     std::vector<unsigned int> steer_idx, fixed_idx;

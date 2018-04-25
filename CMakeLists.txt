@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   control_toolbox
   rostime
   nav_msgs
+  message_generation
 )
 
 find_package(gazebo REQUIRED)
@@ -26,6 +27,16 @@ if(NOT EIGEN3_FOUND)
 else()
   set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 endif()
+
+add_service_files(
+  FILES
+  ControlType.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 catkin_package(
  INCLUDE_DIRS include
@@ -41,6 +52,7 @@ catkin_package(
     control_toolbox
     rostime
     nav_msgs
+    message_runtime
 )
 
 link_directories(${GAZEBO_LIBRARY_DIRS})
@@ -68,6 +80,8 @@ target_link_libraries(pid_control ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES})
 # test Butterworth filter
 add_executable(butter test/testButter.cpp)
 target_link_libraries(butter ${catkin_LIBRARIES})
+add_executable(sdf_parse test/sdf_parse.cpp)
+target_link_libraries(sdf_parse ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
 install(TARGETS pid_control
                 freefloating_gazebo_fluid 
@@ -81,4 +95,5 @@ install(DIRECTORY include/${PROJECT_NAME}/
 
 install(DIRECTORY scripts
                   world
+                  srv
             DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

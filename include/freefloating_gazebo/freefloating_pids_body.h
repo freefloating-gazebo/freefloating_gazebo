@@ -13,19 +13,21 @@
 
 class FreeFloatingBodyPids : public FreeFloatingPids
 {
-
 public:
-    void Init(const ros::NodeHandle &_node, ros::Duration&_dt, const std::vector<std::string>&_controlled_axes);
-
-    void initDepthControl()
-    {
-        control_type_ = DEPTH_CONTROL;
-    }
+    void Init(const ros::NodeHandle &_node,
+              ros::Duration&_dt,
+              const std::vector<std::string>&_controlled_axes,
+              std::string default_mode = "position");
 
     // parse received position setpoint
     void PositionSPCallBack(const geometry_msgs::PoseStampedConstPtr& _msg);
     // parse received velocity setpoint
     void VelocitySPCallBack(const geometry_msgs::TwistStampedConstPtr & _msg);
+    // parse received wrench
+    void WrenchSPCallBack(const geometry_msgs::WrenchConstPtr & _msg)
+    {
+        wrench_command_ = *_msg;
+    }
 
     // parse received body measure
     void MeasureCallBack(const nav_msgs::OdometryConstPtr& _msg);

@@ -27,6 +27,9 @@
   <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>eigen</depend>
+  
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
 
   <export>
     <gazebo_ros plugin_path="${prefix}/lib" gazebo_media_path="${prefix}" />

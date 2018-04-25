@@ -17,6 +17,7 @@ int main(int argc, char ** argv)
     ros::service::waitForService("/gazebo/unpause_physics");
     bool control_body = false;
     bool control_joints = false;
+    bool output_thrusters = false;
     while(!(control_body || control_joints))
     {
         sleep(5);
@@ -30,19 +31,24 @@ int main(int argc, char ** argv)
         std::string control_type;
         control_node.getParam("config/body/control_type", control_type);
         if(control_type == "thruster")
+        {
             // check for a flag that tells us to use PID however
             control_body = control_node.param("config/body/use_pid", false);
+            output_thrusters = true;
+        }
     }
     // -- Parse body data if needed ---------
 
     // body setpoint and state topics
-    std::string body_position_sp_topic, body_velocity_sp_topic, body_state_topic, body_command_topic;
+    std::string body_position_sp_topic, body_velocity_sp_topic, body_state_topic,
+                body_command_topic, body_effort_sp_topic;
     std::vector<std::string> controlled_axes;
 
     if(control_body)
     {
         control_node.param("config/body/position_setpoint", body_position_sp_topic, std::string("body_position_setpoint"));
         control_node.param("config/body/velocity_setpoint", body_velocity_sp_topic, std::string("body_velocity_setpoint"));
+        control_node.param("config/body/wrench_setpoint", body_effort_sp_topic, std::string("body_wrench_setpoint"));
         control_node.param("config/body/state", body_state_topic, std::string("state"));
         control_node.param("config/body/command", body_command_topic, std::string("body_command"));
         // controlled body axes
@@ -70,7 +76,8 @@ int main(int argc, char ** argv)
     // -- Init body ------------------
     // PID's class
     FreeFloatingBodyPids body_pid;
-    ros::Subscriber body_position_sp_subscriber, body_velocity_sp_subscriber, body_state_subscriber;
+    ros::Subscriber body_position_sp_subscriber, body_velocity_sp_subscriber,
+                    body_wrench_sp_subscriber, body_state_subscriber;
     ros::Publisher body_command_publisher;
     std::string default_mode = "position";
 
@@ -78,7 +85,10 @@ int main(int argc, char ** argv)
     ss << "Init PID control for " << rosnode.getNamespace() << ": ";
     if(control_body)
     {
-        body_pid.Init(control_node, dt, controlled_axes);
+        if(priv.hasParam("body_control"))
+            priv.getParam("body_control", default_mode);
+
+        body_pid.Init(control_node, dt, controlled_axes, default_mode);
 
         // position setpoint
         body_position_sp_subscriber =
@@ -86,6 +96,9 @@ int main(int argc, char ** argv)
         // velocity setpoint
         body_velocity_sp_subscriber =
                 rosnode.subscribe(body_velocity_sp_topic, 1, &FreeFloatingBodyPids::VelocitySPCallBack, &body_pid);
+        // wrench setpoint
+        body_wrench_sp_subscriber =
+                rosnode.subscribe(body_effort_sp_topic, 1, &FreeFloatingBodyPids::WrenchSPCallBack, &body_pid);
         // measure
         body_state_subscriber =
                 rosnode.subscribe(body_state_topic, 1, &FreeFloatingBodyPids::MeasureCallBack, &body_pid);
@@ -93,13 +106,6 @@ int main(int argc, char ** argv)
         body_command_publisher =
                 rosnode.advertise<geometry_msgs::Wrench>(body_command_topic, 1);
 
-        // default control
-    if(priv.hasParam("body_control"))
-        priv.getParam("body_control", default_mode);
-        if(default_mode == "velocity")
-            body_pid.initVelocityControl();
-        else if(default_mode == "depth")
-            body_pid.initDepthControl();
         ss << controlled_axes.size() << " controlled axes (" << default_mode << " control)";
     }
 
@@ -111,8 +117,12 @@ int main(int argc, char ** argv)
 
     if(control_joints)
     {
+        default_mode = "position";
+        if(priv.hasParam("joint_control"))
+            priv.getParam("joint_control", default_mode);
+
         // pid
-        joint_pid.Init(control_node, dt);
+        joint_pid.Init(control_node, dt, default_mode);
 
         // setpoint
         joint_setpoint_subscriber = rosnode.subscribe(joint_setpoint_topic, 1, &FreeFloatingJointPids::SetpointCallBack, &joint_pid);
@@ -122,12 +132,6 @@ int main(int argc, char ** argv)
 
         // command
         joint_command_publisher = rosnode.advertise<sensor_msgs::JointState>(joint_command_topic, 1);
-
-        default_mode = "position";
-        if(priv.hasParam("joint_control"))
-            priv.getParam("joint_control", default_mode);
-            if(default_mode == "velocity")
-                joint_pid.initVelocityControl();
     }
 
     std::vector<std::string> joint_names;
@@ -144,7 +148,11 @@ int main(int argc, char ** argv)
         // update body and publish
         if(control_body)
             if(body_pid.UpdatePID())
+            {
+                //if(output_thrusters)
+
                 body_command_publisher.publish(body_pid.WrenchCommand());
+            }
 
         // update joints and publish
         if(control_joints)

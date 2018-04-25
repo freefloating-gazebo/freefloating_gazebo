@@ -12,13 +12,16 @@ simulates buoyancy and viscous force from water
 - freefloating_gazebo_control (model plugin)
 opens topics for wrench and joint states, in order to control the considered robots
 
-## Other executables
+## Built-in PID control
 
-Also builds an external PID controler: pid_control.
+An external PID controler is available: pid_control.
 
-These PID's allow position or velocity control of the vehicle body and joints. Depth control is also possible for the body, where z-depth is controlled in position while other axis are controlled in velocity.
+These PID's allow position, velocity or effort control of the vehicle body and joints.
+
 Subscribes to setpoint and states topics, and publishes on the wrench and torque topics that are subscribed to by the freefloating_gazebo_control plugin.
-Private parameters `body_control` and `joint_control` allow setting the default mode (body: position / velocity / depth, joint: position / velocity).
+Private parameters `body_control` and `joint_control` allow setting the default mode (body: position / velocity / effort (body wrench), joint: position / velocity / effort).
+
+This PID advertises the corresponding services to switch some of the axis (joint names or x, y, z, roll, pitch, yaw) to another type of control. 
 
 ## Examples
 

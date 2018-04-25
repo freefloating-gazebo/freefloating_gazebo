@@ -93,8 +93,8 @@ bool FreeFloatingJointPids::UpdatePID()
 
         for(unsigned int i=0;i<velocity_error_.size();++i)
         {
-            gains = position_pids_[i].pid.getGains();
-            joint_max_velocity_[i] = gains.i_max_;
+               gains = position_pids_[i].pid.getGains();
+               joint_max_velocity_[i] = gains.i_max_;
         }
         vmax_is_set_ = true;
     }

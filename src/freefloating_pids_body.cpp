@@ -73,7 +73,7 @@ void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt,
     // default control = position
     CTreq req;
     CTres res;    
-
+    ToPositionControl(req, res);
     if(default_mode == "velocity")
     {
         ToVelocityControl(req, res);
@@ -88,8 +88,6 @@ void FreeFloatingBodyPids::Init(const ros::NodeHandle &_node, ros::Duration&_dt,
         req.axes = {"x", "y", "z", "yaw"};
         ToEffortControl(req, res);
     }
-    else
-        ToPositionControl(req, res);
 
     initSwitchServices("body");
 }

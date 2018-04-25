@@ -31,9 +31,7 @@ public:
     }
 
     // parse for Gazebo
-    void parse(gazebo::physics::ModelPtr &_model,
-               sdf::ElementPtr &_sdf,
-               std::vector<gazebo::physics::LinkPtr> &_links)
+    void parse(sdf::ElementPtr &_sdf)
     {
         names.clear();
         fixed_idx.clear();

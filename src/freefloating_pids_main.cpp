@@ -1,5 +1,6 @@
 #include <freefloating_gazebo/freefloating_pids_body.h>
 #include <freefloating_gazebo/freefloating_pids_joint.h>
+#include <freefloating_gazebo/thruster_mapper.h>
 
 using std::cout;
 using std::endl;
@@ -9,8 +10,8 @@ int main(int argc, char ** argv)
 
     // init ROS node
     ros::init(argc, argv, "freefloating_pid_control");
-    ros::NodeHandle rosnode;
-    ros::NodeHandle control_node(rosnode, "controllers");
+    ros::NodeHandle nh;
+    ros::NodeHandle control_node(nh, "controllers");
     ros::NodeHandle priv("~");
 
     // wait for Gazebo running
@@ -82,7 +83,7 @@ int main(int argc, char ** argv)
     std::string default_mode = "position";
 
     std::stringstream ss;
-    ss << "Init PID control for " << rosnode.getNamespace() << ": ";
+    ss << "Init PID control for " << nh.getNamespace() << ": ";
     if(control_body)
     {
         if(priv.hasParam("body_control"))
@@ -92,19 +93,19 @@ int main(int argc, char ** argv)
 
         // position setpoint
         body_position_sp_subscriber =
-                rosnode.subscribe(body_position_sp_topic, 1, &FreeFloatingBodyPids::PositionSPCallBack, &body_pid);
+                nh.subscribe(body_position_sp_topic, 1, &FreeFloatingBodyPids::PositionSPCallBack, &body_pid);
         // velocity setpoint
         body_velocity_sp_subscriber =
-                rosnode.subscribe(body_velocity_sp_topic, 1, &FreeFloatingBodyPids::VelocitySPCallBack, &body_pid);
+                nh.subscribe(body_velocity_sp_topic, 1, &FreeFloatingBodyPids::VelocitySPCallBack, &body_pid);
         // wrench setpoint
         body_wrench_sp_subscriber =
-                rosnode.subscribe(body_effort_sp_topic, 1, &FreeFloatingBodyPids::WrenchSPCallBack, &body_pid);
+                nh.subscribe(body_effort_sp_topic, 1, &FreeFloatingBodyPids::WrenchSPCallBack, &body_pid);
         // measure
         body_state_subscriber =
-                rosnode.subscribe(body_state_topic, 1, &FreeFloatingBodyPids::MeasureCallBack, &body_pid);
+                nh.subscribe(body_state_topic, 1, &FreeFloatingBodyPids::MeasureCallBack, &body_pid);
         // command
         body_command_publisher =
-                rosnode.advertise<geometry_msgs::Wrench>(body_command_topic, 1);
+                nh.advertise<geometry_msgs::Wrench>(body_command_topic, 1);
 
         ss << controlled_axes.size() << " controlled axes (" << default_mode << " control)";
     }
@@ -125,13 +126,13 @@ int main(int argc, char ** argv)
         joint_pid.Init(control_node, dt, default_mode);
 
         // setpoint
-        joint_setpoint_subscriber = rosnode.subscribe(joint_setpoint_topic, 1, &FreeFloatingJointPids::SetpointCallBack, &joint_pid);
+        joint_setpoint_subscriber = nh.subscribe(joint_setpoint_topic, 1, &FreeFloatingJointPids::SetpointCallBack, &joint_pid);
 
         // measure
-        joint_state_subscriber = rosnode.subscribe(joint_state_topic, 1, &FreeFloatingJointPids::MeasureCallBack, &joint_pid);
+        joint_state_subscriber = nh.subscribe(joint_state_topic, 1, &FreeFloatingJointPids::MeasureCallBack, &joint_pid);
 
         // command
-        joint_command_publisher = rosnode.advertise<sensor_msgs::JointState>(joint_command_topic, 1);
+        joint_command_publisher = nh.advertise<sensor_msgs::JointState>(joint_command_topic, 1);
     }
 
     std::vector<std::string> joint_names;
@@ -143,15 +144,22 @@ int main(int argc, char ** argv)
 
     ROS_INFO("%s", ss.str().c_str());
 
+    ffg::ThrusterMapper mapper;
+    if(output_thrusters)
+        mapper.parse(nh);
+
     while(ros::ok())
     {
         // update body and publish
         if(control_body)
             if(body_pid.UpdatePID())
             {
-                //if(output_thrusters)
-
-                body_command_publisher.publish(body_pid.WrenchCommand());
+                if(output_thrusters)
+                    body_command_publisher.publish(
+                                mapper.wrench2Thrusters(body_pid.WrenchCommand())
+                                );
+                else
+                    body_command_publisher.publish(body_pid.WrenchCommand());
             }
 
         // update joints and publish

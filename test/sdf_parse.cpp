@@ -1,23 +1,19 @@
-#include <sdf/sdf.hh>
-#include <sdf/parser.hh>
 #include <ros/ros.h>
+#include <freefloating_gazebo/thruster_mapper.h>
+
+using namespace std;
 
 int main(int argc, char ** argv)
 {
-ros::init(argc, argv, "butterWorth");
-ros::NodeHandle nh;
+ros::init(argc, argv, "sdf_parse");
+ros::NodeHandle nh("pirov");
 
-std::string s;
-nh.getParam("/auv/robot_description", s);
+ffg::ThrusterMapper mapper;
+mapper.parse(nh);
 
-sdf::SDFPtr sdfElement(new sdf::SDF());
-sdf::init(sdfElement);
-sdf::initString(s, sdfElement);
-
-sdf::SDFPtr root;
-sdf::initString(s, root);
-
-sdf::ElementPtr elem;
+std::cout << mapper.map << std::endl;
+for(auto v: mapper.max_vel)
+    std::cout << v << " ";
 
 
 }

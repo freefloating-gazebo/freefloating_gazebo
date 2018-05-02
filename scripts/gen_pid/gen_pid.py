@@ -33,9 +33,20 @@ class Butter:
         self.y[1] = self.y[0];
         self.y[0] = v;  
         return v
-
-
-
+    
+# write default values
+def write(d, key, val):
+    print 'Dict: ', d
+    print '   Called with', key, val
+    if '/' in key:
+        keys = key.split('/')
+        print '   ', keys
+        if keys[0] not in d:
+            print '   Creating ' + keys[0]
+            d[keys[0]] = {}
+        write(d[keys[0]], '/'.join(keys[1:]), val)
+    elif key not in d:
+        d[key] = val
 
 plt.close('all')
 fig, ax = plt.subplots()
@@ -58,55 +69,66 @@ resetax = plt.axes([0.1, 0.15, 0.1, 0.04])
 button = Button(resetax, 'OK', color=axcolor, hovercolor='0.975')
 
 
-
 fig.tight_layout()
 
 
 if __name__ == '__main__':
     
-    p_default = 2
-    i_default = 0
-    d_default = 0
+    gains = {'p': 2, 'i': 0, 'd': 0}
     
     if len(sys.argv) < 2:
         print 'Input a .xacro or .urdf file'
-        print 'syntax : gen_pid.py <package> <urdf file>'
+        print 'syntax : gen_pid.py <package> <urdf/xacro file>'
         sys.exit(0)
         
     robot_package = substitution_args.resolve_args('$(find %s)' % sys.argv[1])        
-    robot_file = sys.argv[2]
+    robot_file = os.path.splitext(sys.argv[2])[0]
     
     # find file
     robot_abs_file = ''
     for urdf_dir in ['urdf', 'sdf']:
-        if os.path.lexists('%s/%s/%s' % (robot_package, urdf_dir, robot_file)):
-            robot_abs_file = '%s/%s/%s' % (robot_package, urdf_dir, robot_file)
+        for ext in ('urdf','xacro'):
+            candidate = '{}/{}/{}.{}'.format(robot_package, urdf_dir, robot_file, ext)
+            if os.path.lexists(candidate):
+                robot_abs_file = candidate
+    print('Using model ' + robot_abs_file)
             
     # create config directory
     if not os.path.lexists('%s/config' % robot_package):
         os.mkdir('%s/config' % robot_package)
-    config_file = '%s/config/%s_pid.yaml' % (robot_package, robot_file.split('.')[0])
-    
+    # look for existing config file
+    config_file = ''
+    for cf in os.listdir('{}/config'.format(robot_package)):
+        if robot_file in cf:
+            with open('{}/config/{}'.format(robot_package,cf)) as f:
+                content = yaml.load(f)
+            if 'controllers' in content:
+                config_file = '{}/config/{}'.format(robot_package,cf)
+    if config_file == '':       
+        config_file = '{}/config/{}_pid.yaml'.format(robot_package, robot_file)
+    print('Using config ' + config_file)
     # load description
     robot_description = etree.fromstring(check_output(['rosrun', 'xacro', 'xacro', '--inorder', robot_abs_file]))
     
     # init config dictionary
-    pid = {'config': {}}
+    if os.path.lexists(config_file):
+        with open(config_file) as f:
+            pid = yaml.load(f)['controllers']
+    else:
+        pid = {'config': {}}
     
     # parse joints
     joints = [joint for joint in robot_description.findall('joint') if joint.get('type') != "fixed"]
     if len(joints) != 0:
-        pid['config']['joints'] = {}
-        pid['config']['joints']['state'] = 'joint_states'
-        pid['config']['joints']['setpoint'] = 'joint_setpoint'
-        pid['config']['joints']['command'] = 'joint_command'
-        pid['config']['joints']['cascaded_position'] = False
-        pid['config']['joints']['dynamic_reconfigure'] = True    
+        write(pid, 'config/joints/state', 'joint_states')
+        write(pid, 'config/joints/setpoint', 'joint_setpoint')
+        write(pid, 'config/joints/command', 'joint_command')
+        write(pid, 'config/joints/cascaded_position', False)
+        write(pid, 'config/joints/dynamic_reconfigure', True)  
         for joint in joints:
-            name = joint.get('name')
-            pid[name] = {}
-            for controller in ['position', 'velocity']:
-                pid[name][controller] = {'p': p_default, 'i': i_default, 'd': d_default}
+            for mode in ('position','velocity'):
+                for g in gains:
+                    write(pid, '{}/{}/{}'.format(joint.get('name'), mode, g), gains[g])
                 
     # parse thrusters
     thrusters = []
@@ -121,13 +143,12 @@ if __name__ == '__main__':
                 if plugin.find('link') != None:
                     base_link = plugin.find('link').text
             
-    if len(thrusters) != 0:
-        pid['config']['body'] = {}
-        pid['config']['body']['state'] = 'body_state'
-        pid['config']['body']['setpoint'] = 'body_setpoint'
-        pid['config']['body']['command'] = 'body_command'
-        pid['config']['body']['cascaded_position'] = False
-        pid['config']['body']['dynamic_reconfigure'] = True
+    if len(thrusters) != 0:        
+        write(pid, 'config/body/state', 'body_state')
+        write(pid, 'config/body/setpoint', 'body_setpoint')
+        write(pid, 'config/body/command', 'body_command')
+        write(pid, 'config/body/cascaded_position', False)
+        write(pid, 'config/body/dynamic_reconfigure', True)
         body_axis_candidates = {0: 'x', 1: 'y', 2: 'z', 3: 'roll', 4: 'pitch', 5: 'yaw'}
         body_axis = {}
         
@@ -141,33 +162,27 @@ if __name__ == '__main__':
             for x in body_axis_candidates:
                 if thruster_map[x] != 0:
                     body_axis[x] = body_axis_candidates[x]
+        T = np.matrix(T).transpose()
+        n = len(Umax)
+        Umax = np.matrix(Umax).reshape(n,1)  
+        Fmax = np.abs(T)*Umax
+        
         # get damping
         for link in robot_description.findall('link'):
             if link.get('name') == base_link:
                 damp = link.find('buoyancy').find('damping')
                 damping = [float(v) for v in damp.get('xyz').split(' ') + damp.get('rpy').split(' ')]        
                 m = float(link.find('inertial').find('mass').get('value'))
+                mass = [m,m,m]
+                for key in 'ixx','iyy','izz':
+                    mass.append(float(link.find('inertial').find('inertia').get('ixx')))
                 
-        T = np.matrix(T).transpose()
-        n = len(Umax)
-        Umax = np.matrix(Umax).reshape(n,1)        
-        # get max force in each Cartesian direction        
-        Fmax = []
-        I = np.matrix(np.zeros((n,n)))
-        for i in xrange(np.power(2,n)):
-            nb = i
-            bits = [(nb >> bit) & 1 for bit in range(n - 1, -1, -1)]            
-            for j,b in enumerate(bits):
-                if b:
-                    I[j,j] = 1
-                else:
-                    I[j,j] = -1
-            Fmax.append(np.array(T*I*Umax).flatten().tolist())
-        Fmax = np.amax(np.array(Fmax),0)        
+        # get mass / inertia
+        
+                
+      
         
         # plot for x velocity
-        
-        
         vmax = np.sqrt(Fmax[0]/damping[0])
         vstar = vmax/2
         sd, = ax.plot([t[0],t[-1]], [vstar,vstar], lw=2, color='red')

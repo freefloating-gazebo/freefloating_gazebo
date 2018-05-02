@@ -16,7 +16,6 @@
   <!-- general dependencies -->
   <depend>cmake_modules</depend>
   <depend>urdf</depend>
-  <depend>gazebo_ros</depend>
   <depend>control_toolbox</depend>
   <depend>rostime</depend>
   <depend>roscpp</depend>

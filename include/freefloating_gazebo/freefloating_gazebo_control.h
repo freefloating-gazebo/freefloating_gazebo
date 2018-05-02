@@ -12,7 +12,6 @@
 #include <std_msgs/Float32MultiArray.h>
 #include <std_srvs/Empty.h>
 #include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/SVD>
 #include <freefloating_gazebo/thruster_mapper.h>
 
 namespace gazebo

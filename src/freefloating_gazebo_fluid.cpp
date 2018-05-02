@@ -91,16 +91,15 @@ void FreeFloatingFluidPlugin::Update()
     unsigned int i;
     std::vector<model_st>::iterator model_it;
     bool found;
-    for(i=0;i<world_->GetModelCount(); ++i)
+    for(auto model: world_->GetModels())
     {
-        found = false;
-        for(model_it = parsed_models_.begin(); model_it!=parsed_models_.end();++model_it)
+        if(!model->IsStatic())
         {
-            if(world_->GetModel(i)->GetName() == model_it->name)
-                found = true;
+            if(std::find_if(parsed_models_.begin(), parsed_models_.end(),
+                            [&](const model_st &parsed){return parsed.name == model->GetName();})
+                    == parsed_models_.end())    // not in parsed models
+            ParseNewModel(model);
         }
-        if(!found && !(world_->GetModel(i)->IsStatic()))  // model not in list and not static, parse it for potential buoyancy flags
-            ParseNewModel(world_->GetModel(i));
     }
 
     // look for deleted world models

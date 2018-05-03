@@ -17,24 +17,14 @@
    <widget class="QPushButton" name="p_save">
     <property name="geometry">
      <rect>
-      <x>210</x>
+      <x>290</x>
       <y>130</y>
-      <width>80</width>
+      <width>131</width>
       <height>22</height>
      </rect>
     </property>
     <property name="text">
-     <string>Save gains</string>
-    </property>
-   </widget>
-   <widget class="QWidget" name="p_sim" native="true">
-    <property name="geometry">
-     <rect>
-      <x>29</x>
-      <y>169</y>
-      <width>531</width>
-      <height>561</height>
-     </rect>
+     <string>Save position gains</string>
     </property>
    </widget>
    <widget class="QSlider" name="p_Kp_slider">
@@ -62,6 +52,18 @@
       <height>22</height>
      </rect>
     </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="font">
+     <font>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
    </widget>
    <widget class="QLabel" name="label">
     <property name="geometry">
@@ -87,16 +89,6 @@
     </property>
     <property name="text">
      <string>0</string>
-    </property>
-   </widget>
-   <widget class="QWidget" name="v_sim" native="true">
-    <property name="geometry">
-     <rect>
-      <x>610</x>
-      <y>170</y>
-      <width>531</width>
-      <height>561</height>
-     </rect>
     </property>
    </widget>
    <widget class="QLabel" name="label_2">
@@ -309,38 +301,38 @@
      <string>0</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="save_gains_2">
+   <widget class="QPushButton" name="tofile">
     <property name="geometry">
      <rect>
-      <x>670</x>
+      <x>600</x>
       <y>20</y>
       <width>80</width>
       <height>22</height>
      </rect>
     </property>
     <property name="text">
-     <string>Save file</string>
+     <string>Save to file</string>
     </property>
    </widget>
    <widget class="QPushButton" name="v_save">
     <property name="geometry">
      <rect>
-      <x>810</x>
+      <x>990</x>
       <y>130</y>
-      <width>80</width>
+      <width>131</width>
       <height>22</height>
      </rect>
     </property>
     <property name="text">
-     <string>Save gains</string>
+     <string>Save velocity gains</string>
     </property>
    </widget>
    <widget class="QCheckBox" name="p_cascaded">
     <property name="geometry">
      <rect>
-      <x>350</x>
+      <x>430</x>
       <y>130</y>
-      <width>131</width>
+      <width>141</width>
       <height>20</height>
      </rect>
     </property>
@@ -348,16 +340,151 @@
      <string>Cascaded position</string>
     </property>
    </widget>
-  </widget>
-  <widget class="QMenuBar" name="menuBar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>1272</width>
-     <height>19</height>
-    </rect>
-   </property>
+   <widget class="QLabel" name="p_Kp_2">
+    <property name="geometry">
+     <rect>
+      <x>450</x>
+      <y>20</y>
+      <width>31</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Axis</string>
+    </property>
+   </widget>
+   <widget class="QSlider" name="p_setpoint">
+    <property name="geometry">
+     <rect>
+      <x>80</x>
+      <y>130</y>
+      <width>131</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="maximum">
+     <number>1000</number>
+    </property>
+    <property name="orientation">
+     <enum>Qt::Horizontal</enum>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_7">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>130</y>
+      <width>61</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Setpoint</string>
+    </property>
+   </widget>
+   <widget class="QSlider" name="v_setpoint">
+    <property name="geometry">
+     <rect>
+      <x>670</x>
+      <y>130</y>
+      <width>141</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="maximum">
+     <number>1000</number>
+    </property>
+    <property name="orientation">
+     <enum>Qt::Horizontal</enum>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_8">
+    <property name="geometry">
+     <rect>
+      <x>600</x>
+      <y>130</y>
+      <width>61</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Setpoint</string>
+    </property>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>160</y>
+      <width>561</width>
+      <height>571</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="p_sim"/>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget_2">
+    <property name="geometry">
+     <rect>
+      <x>620</x>
+      <y>160</y>
+      <width>551</width>
+      <height>571</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="v_sim"/>
+   </widget>
+   <widget class="QLabel" name="v_sp">
+    <property name="geometry">
+     <rect>
+      <x>850</x>
+      <y>130</y>
+      <width>59</width>
+      <height>14</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>0</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="p_sp">
+    <property name="geometry">
+     <rect>
+      <x>220</x>
+      <y>130</y>
+      <width>59</width>
+      <height>14</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>0</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="p_tofile">
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>20</y>
+      <width>181</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Save position gains to file</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="v_tofile">
+    <property name="geometry">
+     <rect>
+      <x>780</x>
+      <y>20</y>
+      <width>181</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Save velocity gains to file</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">

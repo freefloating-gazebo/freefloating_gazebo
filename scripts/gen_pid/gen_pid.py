@@ -1,246 +1,143 @@
 #!/usr/bin/env python
 
-import xacro, sys
-from subprocess import check_output
-from roslaunch import substitution_args
-import os
-from lxml import etree
 import yaml
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider,Button
+import pids
+import parsers
+from PyQt5 import QtWidgets
+import tunepid
+import sys
+
+try:
+    parsers = reload(parsers)
+    pids = reload(pids)
+    tunepid = reload(tunepid)
+except:
+    pass
+
+# load config
+if len(sys.argv) < 2:
+    print 'Input a .xacro or .urdf file'
+    print 'syntax : gen_pid.py <package> <urdf/xacro file>'
+    sys.exit(0)        
+pid, Umax, Fmax, mass, damping, config_file = parsers.parse(sys.argv[1], sys.argv[2])
+
+axes = ('x','y','z','roll','pitch','yaw')
+max_gains = {'p': 150., 'i': 50, 'd': 10}
 
 
-# 2nd-order Butter
-class Butter:
-    def __init__(self, fc, dt):
-        ita = 1./np.tan(np.pi*fc*dt)
-        q = np.sqrt(2)
-        self.b = [1./(1+q*ita+ita*ita)]
-        self.b.append(2*self.b[0])
-        self.b.append(self.b[0])
-        self.a = [2*(ita*ita - 1)*self.b[0], -(1-q*ita+ita*ita)*self.b[0]]
-        self.x = [0,0,0]
-        self.y = [0,0]
+class TunePID(QtWidgets.QMainWindow):
+
+    def __init__(self, parent=None):
+        QtWidgets.QMainWindow.__init__(self, parent)
+        self.ui = tunepid.Ui_TunePID()
+        self.ui.setupUi(self)
         
-    def butter(self, v):
-        self.x[2] = self.x[1]
-        self.x[1] = self.x[0]
-        self.x[0] = v
+        self.psim = pids.Sim('position')
+        self.vsim = pids.Sim('velocity')
+        self.ui.p_sim.addWidget(self.psim.canvas)
+        self.ui.v_sim.addWidget(self.vsim.canvas)
         
-        v = self.b[2]*self.x[2] + self.b[1]*self.x[1] + self.a[1]*self.y[1] + self.b[0]*self.x[0] + self.a[0]*self.y[0]
+        # build axes menu        
+        for i,ax in enumerate(axes):
+            if Fmax[i]:
+                self.ui.axes_list.addItem(ax)
+        self.ui.axes_list.currentTextChanged.connect(self.axis_change)
+        
+        # connect gains / setpoint sliders
+        for mode,fct in (('position', self.position_sim), ('velocity', self.velocity_sim)):
+            for g in ('p', 'i', 'd'):            
+                getattr(self.ui, mode[0]+'_K{}_slider'.format(g)).valueChanged.connect(fct)
+                getattr(self.ui, mode[0]+'_setpoint').valueChanged.connect(fct)
+            # connect save gains button
+            getattr(self.ui, mode[0]+'_save').clicked.connect(lambda: self.save_gains(mode))
+            # connect save to file
+            getattr(self.ui, mode[0]+'_tofile').clicked.connect(lambda: self.write(mode))
 
-        self.y[1] = self.y[0];
-        self.y[0] = v;  
-        return v
-    
-# write default values
-def write(d, key, val):
-    print 'Dict: ', d
-    print '   Called with', key, val
-    if '/' in key:
-        keys = key.split('/')
-        print '   ', keys
-        if keys[0] not in d:
-            print '   Creating ' + keys[0]
-            d[keys[0]] = {}
-        write(d[keys[0]], '/'.join(keys[1:]), val)
-    elif key not in d:
-        d[key] = val
+        # global save
+        self.ui.tofile.clicked.connect(self.write_all)
+        
+        self.axis_change()
+                
+    def gains(self, mode):      
+        gains = {}
+        for g in ('p','i','d'):
+            label = mode + '_K' + g
+            gains[g] = getattr(self.ui, label+'_slider').value()*max_gains[g]/1000
+            getattr(self.ui, label).setText(str(gains[g]))
+        return gains
+       
+    def axis_change(self):
+        ax = str(self.ui.axes_list.currentText())
+        # load gains
+        for mode in ('position','velocity'):
+            for g in ('p','i','d'):
+                label = mode[0] + '_K' + g + '_slider'
+                getattr(self.ui, label).setValue(pid[ax][mode][g]*1000/max_gains[g])
+                    
+    def position_sim(self):
+        
+        # get simulated axis
+        ax = str(self.ui.axes_list.currentText())
+        # cascaded or not
+        
+        
+    def velocity_sim(self):
+        # get simulated axis
+        ax = str(self.ui.axes_list.currentText())
+        # get max setpoint
+        i = axes.index(ax)
+        vmax = Fmax[i]/damping[i]
+        sp = self.ui.v_setpoint.value()*1.5*vmax/1000
+        self.ui.v_sp.setText(str(sp))
+        
+        self.vsim.run(self.gains('v'), sp, mass[i], damping[i], Fmax[i])
+        
+    def save_gains(self, mode, ax = None):
+        global pid
+        if ax == None:
+            ax = str(self.ui.axes_list.currentText())
+        pid[ax][mode] = self.gains(mode[0])    
+                
+    def write(self, mode, ax = None):
+        
+        self.save_gains(mode, ax)
+            
+        # only save current axis
+        if ax == None:
+            ax = str(self.ui.axes_list.currentText())
+        
+        # reload current gains from config file
+        with open(config_file) as f:
+            pid_base = yaml.load(f)['controllers']
+        # replace with current
+        pid_base[ax][mode] = pid[ax][mode]
+        
+        # and save
+        with open(config_file, 'w') as f:
+            yaml.dump({'controllers': pid_base}, f, default_flow_style=False)
+            
+            
+    def write_all(self):        
+        # reload current gains from config file
+        with open(config_file) as f:
+            pid_base = yaml.load(f)['controllers']
+        
+        for ax in [self.ui.axes_list.itemText(i) for i in range(self.ui.axes_list.count())]:
+            for mode in ('position','velocity'):
+                self.save_gains(mode, ax)
+                # replace with current
+                pid_base[ax][mode] = pid[ax][mode]
 
-plt.close('all')
-fig, ax = plt.subplots()
-plt.subplots_adjust(left=0.25, bottom=0.25)
-dt = 0.01
-t = np.arange(0,10,dt)
-
-ax2 = ax.twinx()
-
-axcolor = 'lightgoldenrodyellow'
-axKp = plt.axes([0.25, 0.2, 0.65, 0.03])
-axKi = plt.axes([0.25, 0.15, 0.65, 0.03])
-axKd = plt.axes([0.25, 0.1, 0.65, 0.03])
-
-sKp = Slider(axKp, 'Kp', 0, 100.0, valinit=5)
-sKi = Slider(axKi, 'Ki', 0, 50.0, valinit=1)
-sKd = Slider(axKd, 'Kd', 0, 2, valinit=0)
-
-resetax = plt.axes([0.1, 0.15, 0.1, 0.04])
-button = Button(resetax, 'OK', color=axcolor, hovercolor='0.975')
-
-
-fig.tight_layout()
-
+        # and save
+        with open(config_file, 'w') as f:
+            yaml.dump({'controllers': pid_base}, f, default_flow_style=False)
+                
 
 if __name__ == '__main__':
     
-    gains = {'p': 2, 'i': 0, 'd': 0}
+    pids.pl.close('all')    
+    app = QtWidgets.QApplication(sys.argv)
+    window = TunePID()
+    window.show()
+    sys.exit(app.exec_())
     
-    if len(sys.argv) < 2:
-        print 'Input a .xacro or .urdf file'
-        print 'syntax : gen_pid.py <package> <urdf/xacro file>'
-        sys.exit(0)
-        
-    robot_package = substitution_args.resolve_args('$(find %s)' % sys.argv[1])        
-    robot_file = os.path.splitext(sys.argv[2])[0]
-    
-    # find file
-    robot_abs_file = ''
-    for urdf_dir in ['urdf', 'sdf']:
-        for ext in ('urdf','xacro'):
-            candidate = '{}/{}/{}.{}'.format(robot_package, urdf_dir, robot_file, ext)
-            if os.path.lexists(candidate):
-                robot_abs_file = candidate
-    print('Using model ' + robot_abs_file)
-            
-    # create config directory
-    if not os.path.lexists('%s/config' % robot_package):
-        os.mkdir('%s/config' % robot_package)
-    # look for existing config file
-    config_file = ''
-    for cf in os.listdir('{}/config'.format(robot_package)):
-        if robot_file in cf:
-            with open('{}/config/{}'.format(robot_package,cf)) as f:
-                content = yaml.load(f)
-            if 'controllers' in content:
-                config_file = '{}/config/{}'.format(robot_package,cf)
-    if config_file == '':       
-        config_file = '{}/config/{}_pid.yaml'.format(robot_package, robot_file)
-    print('Using config ' + config_file)
-    # load description
-    robot_description = etree.fromstring(check_output(['rosrun', 'xacro', 'xacro', '--inorder', robot_abs_file]))
-    
-    # init config dictionary
-    if os.path.lexists(config_file):
-        with open(config_file) as f:
-            pid = yaml.load(f)['controllers']
-    else:
-        pid = {'config': {}}
-    
-    # parse joints
-    joints = [joint for joint in robot_description.findall('joint') if joint.get('type') != "fixed"]
-    if len(joints) != 0:
-        write(pid, 'config/joints/state', 'joint_states')
-        write(pid, 'config/joints/setpoint', 'joint_setpoint')
-        write(pid, 'config/joints/command', 'joint_command')
-        write(pid, 'config/joints/cascaded_position', False)
-        write(pid, 'config/joints/dynamic_reconfigure', True)  
-        for joint in joints:
-            for mode in ('position','velocity'):
-                for g in gains:
-                    write(pid, '{}/{}/{}'.format(joint.get('name'), mode, g), gains[g])
-                
-    # parse thrusters
-    thrusters = []
-    base_link = 'base_link'
-    damping = [100. for i in range(6)]
-    m = 5
-    
-    for gazebo in robot_description.findall('gazebo'):
-        for plugin in gazebo.findall('plugin'):
-            if plugin.get('name') == 'freefloating_gazebo_control':
-                thrusters += plugin.findall('thruster')
-                if plugin.find('link') != None:
-                    base_link = plugin.find('link').text
-            
-    if len(thrusters) != 0:        
-        write(pid, 'config/body/state', 'body_state')
-        write(pid, 'config/body/setpoint', 'body_setpoint')
-        write(pid, 'config/body/command', 'body_command')
-        write(pid, 'config/body/cascaded_position', False)
-        write(pid, 'config/body/dynamic_reconfigure', True)
-        body_axis_candidates = {0: 'x', 1: 'y', 2: 'z', 3: 'roll', 4: 'pitch', 5: 'yaw'}
-        body_axis = {}
-        
-        # get thruster characteristics
-        T = []
-        Umax = []
-        for thruster in thrusters:
-            thruster_map = [float(v) for v in thruster.find('map').text.split(' ')]
-            T.append(thruster_map)
-            Umax.append(float(thruster.find('effort').text))
-            for x in body_axis_candidates:
-                if thruster_map[x] != 0:
-                    body_axis[x] = body_axis_candidates[x]
-        T = np.matrix(T).transpose()
-        n = len(Umax)
-        Umax = np.matrix(Umax).reshape(n,1)  
-        Fmax = np.abs(T)*Umax
-        
-        # get damping
-        for link in robot_description.findall('link'):
-            if link.get('name') == base_link:
-                damp = link.find('buoyancy').find('damping')
-                damping = [float(v) for v in damp.get('xyz').split(' ') + damp.get('rpy').split(' ')]        
-                m = float(link.find('inertial').find('mass').get('value'))
-                mass = [m,m,m]
-                for key in 'ixx','iyy','izz':
-                    mass.append(float(link.find('inertial').find('inertia').get('ixx')))
-                
-        # get mass / inertia
-        
-                
-      
-        
-        # plot for x velocity
-        vmax = np.sqrt(Fmax[0]/damping[0])
-        vstar = vmax/2
-        sd, = ax.plot([t[0],t[-1]], [vstar,vstar], lw=2, color='red')
-        s, = ax.plot(t, 0*t, lw=2, color='blue')
-        U, = ax2.plot(t, 0*t, lw=2, color='green')
-        ax.axis((0,t[-1],0,2*vstar))
-        ax2.axis((0,t[-1],0,1.05*Fmax[0]))
-        
-        butter = Butter(5, dt)
-
-        def update(val):
-            Kp = sKp.val
-            Ki = sKi.val
-            Kd = sKd.val 
-            
-            v = [0]
-            u = [0]
-            e_i = 0
-            prev = 0
-            
-            for ti in t[1:]:
-                cur = butter.butter(v[-1])
-                e = vstar - cur
-                if np.abs(u[-1]) < Fmax[0]:
-                    e_i += e
-                if prev:
-                    cmd = Kp*(e + Ki*dt*e_i + Kd*(prev-cur)/dt)
-                else:
-                    cmd = Kp*(e + Ki*dt*e_i)                    
-                    
-                cmd = min(max(cmd,-Fmax[0]),Fmax[0])
-                u.append(cmd)                                    
-                v.append(v[-1] + dt*(cmd - damping[0]*cur*cur)/m)
-                prev = cur
-            s.set_data(t,v)
-            U.set_data(t, u)
-            
-            fig.canvas.draw_idle()            
-
-        sKp.on_changed(update)
-        sKi.on_changed(update)
-        sKd.on_changed(update)
-        
-        def save_config(val):
-            for i,a in body_axis.iteritems():
-                pid[a] = {}
-                for controller in ['position', 'velocity']:
-                    pid[a][controller] = {'p': p_default, 'i': i_default, 'd': d_default}
-            # write config
-            if len(joints) + len(thrusters) != 0:
-                with open(config_file, 'w') as f:
-                    yaml.dump({'controllers': pid}, f)
-                print 'controller written in', config_file   
-        button.on_clicked(save_config)
-                
-        plt.show()
-        update(0)
-                
-
-
-        

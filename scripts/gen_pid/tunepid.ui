@@ -485,6 +485,25 @@
      <string>Save velocity gains to file</string>
     </property>
    </widget>
+   <widget class="QSlider" name="time_slider">
+    <property name="geometry">
+     <rect>
+      <x>330</x>
+      <y>740</y>
+      <width>541</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="minimum">
+     <number>1</number>
+    </property>
+    <property name="maximum">
+     <number>1000</number>
+    </property>
+    <property name="orientation">
+     <enum>Qt::Horizontal</enum>
+    </property>
+   </widget>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">

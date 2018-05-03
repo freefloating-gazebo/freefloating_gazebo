@@ -22,7 +22,7 @@ if len(sys.argv) < 2:
 pid, Umax, Fmax, mass, damping, config_file = parsers.parse(sys.argv[1], sys.argv[2])
 
 axes = ('x','y','z','roll','pitch','yaw')
-max_gains = {'p': 150., 'i': 50, 'd': 10}
+max_gains = {'p': 150., 'i': 50., 'd': 10.}
 
 
 class TunePID(QtWidgets.QMainWindow):
@@ -32,8 +32,8 @@ class TunePID(QtWidgets.QMainWindow):
         self.ui = tunepid.Ui_TunePID()
         self.ui.setupUi(self)
         
-        self.psim = pids.Sim('position')
-        self.vsim = pids.Sim('velocity')
+        self.psim = pids.Sim('p')
+        self.vsim = pids.Sim('v')
         self.ui.p_sim.addWidget(self.psim.canvas)
         self.ui.v_sim.addWidget(self.vsim.canvas)
         
@@ -43,15 +43,20 @@ class TunePID(QtWidgets.QMainWindow):
                 self.ui.axes_list.addItem(ax)
         self.ui.axes_list.currentTextChanged.connect(self.axis_change)
         
+        self.ui.time_slider.valueChanged.connect(self.sims)
+        
         # connect gains / setpoint sliders
         for mode,fct in (('position', self.position_sim), ('velocity', self.velocity_sim)):
             for g in ('p', 'i', 'd'):            
                 getattr(self.ui, mode[0]+'_K{}_slider'.format(g)).valueChanged.connect(fct)
                 getattr(self.ui, mode[0]+'_setpoint').valueChanged.connect(fct)
-            # connect save gains button
-            getattr(self.ui, mode[0]+'_save').clicked.connect(lambda: self.save_gains(mode))
-            # connect save to file
-            getattr(self.ui, mode[0]+'_tofile').clicked.connect(lambda: self.write(mode))
+            
+        # connect save gains button
+        getattr(self.ui, 'p_save').clicked.connect(lambda: self.save_gains('position'))
+        getattr(self.ui, 'v_save').clicked.connect(lambda: self.save_gains('velocity'))
+        # connect save to file
+        getattr(self.ui, 'p_tofile').clicked.connect(lambda: self.write('position'))
+        getattr(self.ui, 'v_tofile').clicked.connect(lambda: self.write('velocity'))
 
         # global save
         self.ui.tofile.clicked.connect(self.write_all)
@@ -73,6 +78,10 @@ class TunePID(QtWidgets.QMainWindow):
             for g in ('p','i','d'):
                 label = mode[0] + '_K' + g + '_slider'
                 getattr(self.ui, label).setValue(pid[ax][mode][g]*1000/max_gains[g])
+                
+    def sims(self):
+        self.position_sim()
+        self.velocity_sim()
                     
     def position_sim(self):
         
@@ -80,23 +89,37 @@ class TunePID(QtWidgets.QMainWindow):
         ax = str(self.ui.axes_list.currentText())
         # cascaded or not
         
+        # setpoint
+        i = axes.index(ax)
+        sp = self.ui.p_setpoint.value()*10./1000
+        self.ui.p_sp.setText(str(sp))
+        
+        # final time
+        tmax = self.ui.time_slider.value()*20./1000
+        
+        self.psim.run(self.gains('p'), sp, mass[i], damping[i], Fmax[i], tmax)
+        
         
     def velocity_sim(self):
         # get simulated axis
         ax = str(self.ui.axes_list.currentText())
+        
         # get max setpoint
         i = axes.index(ax)
         vmax = Fmax[i]/damping[i]
         sp = self.ui.v_setpoint.value()*1.5*vmax/1000
         self.ui.v_sp.setText(str(sp))
         
-        self.vsim.run(self.gains('v'), sp, mass[i], damping[i], Fmax[i])
+        tmax = self.ui.time_slider.value()*20./1000
+        
+        self.vsim.run(self.gains('v'), sp, mass[i], damping[i], Fmax[i], tmax)
         
     def save_gains(self, mode, ax = None):
         global pid
         if ax == None:
             ax = str(self.ui.axes_list.currentText())
-        pid[ax][mode] = self.gains(mode[0])    
+        pid[ax][mode] = self.gains(mode[0]) 
+        print 'Writing gains for {}/{}'.format(ax, mode)
                 
     def write(self, mode, ax = None):
         

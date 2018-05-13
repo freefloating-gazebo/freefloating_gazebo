@@ -13,6 +13,10 @@ namespace gazebo
 
 class FreeFloatingFluidPlugin : public  WorldPlugin
 {
+
+    typedef ignition::math::Vector3d Vector3d;
+
+
 public:
     FreeFloatingFluidPlugin() {}
     ~FreeFloatingFluidPlugin()
@@ -29,10 +33,10 @@ private:
     {
         std::string model_name;
         physics::LinkPtr link;
-        math::Vector3 buoyant_force;
-        math::Vector3 buoyancy_center;
-        math::Vector3 linear_damping;
-        math::Vector3 angular_damping;
+        Vector3d buoyant_force;
+        Vector3d buoyancy_center;
+        Vector3d linear_damping;
+        Vector3d angular_damping;
         double limit;
     };
 
@@ -44,7 +48,7 @@ private:
     };
 
     // parse a Vector3 string
-    void ReadVector3(const std::string &_string, math::Vector3 &_vector);
+    void ReadVector3(const std::string &_string, Vector3d &_vector);
     // parse a new model
     void ParseNewModel(const physics::ModelPtr &_model);
     // removes a deleted model
@@ -55,7 +59,7 @@ private:
 private:
     // plugin options
     bool has_surface_;
-    math::Vector4 surface_plane_;
+    ignition::math::Vector4d surface_plane_;
     std::string description_;
 
     // general data
@@ -71,7 +75,7 @@ private:
 
     // subscriber to fluid velocity (defined in the world frame)
     ros::Subscriber fluid_velocity_subscriber_;
-    math::Vector3 fluid_velocity_;
+    Vector3d fluid_velocity_;
 
 };
 GZ_REGISTER_WORLD_PLUGIN(FreeFloatingFluidPlugin)

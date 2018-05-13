@@ -11,8 +11,6 @@
 #include <gazebo/physics/PhysicsEngine.hh>
 #include <tinyxml.h>
 #include <urdf_parser/urdf_parser.h>
-#include <gazebo/math/Pose.hh>
-
 
 #include <freefloating_gazebo/freefloating_gazebo_fluid.h>
 
@@ -20,11 +18,19 @@ using std::cout;
 using std::endl;
 using std::string;
 
+#if GAZEBO_MAJOR_VERSION < 9
+#define GAZEBOLD
+    ignition::math::Vector3d v3convert(gazebo::math::Vector3 src)
+    {
+        return ignition::math::Vector3d(src.x, src.y, src.z);
+    }
+#endif
 
 namespace gazebo
 {
 
-void FreeFloatingFluidPlugin::ReadVector3(const std::string &_string, math::Vector3 &_vector)
+
+void FreeFloatingFluidPlugin::ReadVector3(const std::string &_string, Vector3d &_vector)
 {
     std::stringstream ss(_string);
     double xyz[3];
@@ -52,14 +58,18 @@ void FreeFloatingFluidPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sd
     {
         has_surface_ = true;
         // get one surface point
-        math::Vector3 surface_point;
+        Vector3d surface_point;
         ReadVector3(_sdf->Get<std::string>("surface"), surface_point);
         // get gravity
-        const math::Vector3 WORLD_GRAVITY = world_->GetPhysicsEngine()->GetGravity().Normalize();
+#ifdef GAZEBOLD
+        const Vector3d WORLD_GRAVITY = v3convert(world_->GetPhysicsEngine()->GetGravity().Normalize());
+#else
+        const Vector3d WORLD_GRAVITY = world_->GetPhysicsEngine()->GetGravity().Normalize();
+#endif
         // water surface is orthogonal to gravity
-        surface_plane_.Set(WORLD_GRAVITY.x, WORLD_GRAVITY.y, WORLD_GRAVITY.z, WORLD_GRAVITY.Dot(surface_point));
+        surface_plane_.Set(WORLD_GRAVITY.X(), WORLD_GRAVITY.Y(), WORLD_GRAVITY.Z(), WORLD_GRAVITY.Dot(surface_point));
         // push on parameter server
-        rosnode_->setParam("surface", surface_point.z);
+        rosnode_->setParam("surface", surface_point.Z());
     }
 
     if(_sdf->HasElement("fluidTopic"))  fluid_topic = _sdf->Get<std::string>("fluidTopic");
@@ -119,21 +129,22 @@ void FreeFloatingFluidPlugin::Update()
     }
 
     // here buoy_links is up-to-date with the links that are subject to buoyancy, let's apply it
-    math::Vector3 actual_force, cob_position, velocity_difference;
+    Vector3d actual_force, cob_position, velocity_difference;
     double signed_distance_to_surface;
     for( auto & link:  buoyant_links_)
     {
         // get world position of the center of buoyancy
-        cob_position = link.link->GetWorldPose().pos + link.link->GetWorldPose().rot.RotateVector(link.buoyancy_center);
+        cob_position = v3convert(link.link->GetWorldPose().pos +
+                                 link.link->GetWorldPose().rot.RotateVector(link.buoyancy_center));
         // start from the theoretical buoyancy force
         actual_force = link.buoyant_force;
         if(has_surface_)
         {
             // adjust force depending on distance to surface (very simple model)
-            signed_distance_to_surface = surface_plane_.w
-                    - surface_plane_.x * cob_position.x
-                    - surface_plane_.y * cob_position.y
-                    - surface_plane_.z * cob_position.z;
+            signed_distance_to_surface = surface_plane_.W()
+                    - surface_plane_.X() * cob_position.X()
+                    - surface_plane_.Y() * cob_position.Y()
+                    - surface_plane_.Z() * cob_position.Z();
             if(signed_distance_to_surface > -link.limit)
             {
                 if(signed_distance_to_surface > link.limit)
@@ -145,27 +156,27 @@ void FreeFloatingFluidPlugin::Update()
 
         // get velocity damping
         // linear velocity difference in the link frame
-        velocity_difference = link.link->GetWorldPose().rot.RotateVectorReverse(link.link->GetWorldLinearVel() - fluid_velocity_);
+        velocity_difference = v3convert(link.link->GetWorldPose().rot.RotateVectorReverse(link.link->GetWorldLinearVel() - fluid_velocity_));
         // to square
-        velocity_difference.x *= fabs(velocity_difference.x);
-        velocity_difference.y *= fabs(velocity_difference.y);
-        velocity_difference.z *= fabs(velocity_difference.z);
+        velocity_difference.X() *= fabs(velocity_difference.X());
+        velocity_difference.Y() *= fabs(velocity_difference.Y());
+        velocity_difference.Z() *= fabs(velocity_difference.Z());
         // apply damping coefficients
-        actual_force -= link.link->GetWorldPose().rot.RotateVector(link.linear_damping * velocity_difference);
+        actual_force -= v3convert(link.link->GetWorldPose().rot.RotateVector(link.linear_damping * velocity_difference));
         link.link->AddForceAtWorldPosition(actual_force, cob_position);
 
         // same for angular damping
-        velocity_difference = link.link->GetRelativeAngularVel();
-        velocity_difference.x *= fabs(velocity_difference.x);
-        velocity_difference.y *= fabs(velocity_difference.y);
-        velocity_difference.z *= fabs(velocity_difference.z);
+        velocity_difference = v3convert(link.link->GetRelativeAngularVel());
+        velocity_difference.X() *= fabs(velocity_difference.X());
+        velocity_difference.Y() *= fabs(velocity_difference.Y());
+        velocity_difference.Z() *= fabs(velocity_difference.Z());
         link.link->AddRelativeTorque(-link.angular_damping*velocity_difference);
 
         // publish states as odometry message
         nav_msgs::Odometry state;
         state.header.frame_id = "world";
         state.header.stamp = ros::Time::now();
-        math::Vector3 vec;
+        Vector3d vec;
         math::Pose pose;
         for(const auto & model: parsed_models_)
         {
@@ -182,15 +193,15 @@ void FreeFloatingFluidPlugin::Update()
             state.pose.pose.orientation.w = pose.rot.w;
 
             // write relative linear velocity
-            vec = model.model_ptr->GetRelativeLinearVel();
-            state.twist.twist.linear.x = vec.x;
-            state.twist.twist.linear.y = vec.y;
-            state.twist.twist.linear.z = vec.z;
+            vec = v3convert(model.model_ptr->GetRelativeLinearVel());
+            state.twist.twist.linear.x = vec.X();
+            state.twist.twist.linear.y = vec.Y();
+            state.twist.twist.linear.z = vec.Z();
             // write relative angular velocity
-            vec = model.model_ptr->GetRelativeAngularVel();
-            state.twist.twist.angular.x = vec.x;
-            state.twist.twist.angular.y = vec.y;
-            state.twist.twist.angular.z = vec.z;
+            vec = v3convert(model.model_ptr->GetRelativeAngularVel());
+            state.twist.twist.angular.x = vec.X();
+            state.twist.twist.angular.y = vec.Y();
+            state.twist.twist.angular.z = vec.Z();
 
             // publish
             model.state_publisher.publish(state);
@@ -226,7 +237,7 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
     TiXmlDocument urdf_doc;
     urdf_doc.Parse(urdf_content.c_str(), 0);
 
-    const math::Vector3 WORLD_GRAVITY = world_->GetPhysicsEngine()->GetGravity();
+    const Vector3d WORLD_GRAVITY = v3convert(world_->GetPhysicsEngine()->GetGravity());
 
     TiXmlElement* urdf_root = urdf_doc.FirstChildElement();
     TiXmlNode* urdf_node, *link_node, *buoy_node;
@@ -264,8 +275,8 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
 
                         // get data from urdf
                         // default values
-                        new_buoy_link.buoyancy_center = sdf_link->GetInertial()->GetCoG();
-                        new_buoy_link.linear_damping = new_buoy_link.angular_damping = 5 * math::Vector3::One * sdf_link->GetInertial()->GetMass();
+                        new_buoy_link.buoyancy_center = v3convert(sdf_link->GetInertial()->GetCoG());
+                        new_buoy_link.linear_damping = new_buoy_link.angular_damping = 5 * Vector3d::One * sdf_link->GetInertial()->GetMass();
 
                         compensation = 0;
                         for(buoy_node = link_node->FirstChild(); buoy_node != 0; buoy_node = buoy_node->NextSibling())
@@ -333,9 +344,5 @@ void FreeFloatingFluidPlugin::FluidVelocityCallBack(const geometry_msgs::Vector3
     // store fluid velocity
     fluid_velocity_.Set(_msg->x, _msg->y, _msg->z);
 }
-
-
-
-
 
 }

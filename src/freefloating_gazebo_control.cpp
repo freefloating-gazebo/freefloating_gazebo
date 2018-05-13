@@ -9,14 +9,15 @@
 #include <gazebo/physics/Link.hh>
 #include <gazebo/physics/World.hh>
 #include <gazebo/physics/PhysicsEngine.hh>
-#include <gazebo/math/Pose.hh>
 #include <freefloating_gazebo/freefloating_gazebo_control.h>
 #include <chrono>
 #include <thread>
+#include <functional>
 
 using std::cout;
 using std::endl;
 using std::string;
+using ignition::math::Vector3d;
 
 namespace gazebo
 {
@@ -241,7 +242,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
         update_T_ = 0;
 
     // Register plugin update
-    update_event_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&FreeFloatingControlPlugin::Update, this));
+    update_event_ = event::Events::ConnectWorldUpdateBegin(std::bind(&FreeFloatingControlPlugin::Update, this));
 
     ros::spinOnce();
     ROS_INFO("Started FreeFloating Control Plugin for %s.", _model->GetName().c_str());
@@ -282,15 +283,15 @@ void FreeFloatingControlPlugin::Update()
                 // to wrench
                 fixed = mapper_.map * fixed;
                 // apply this wrench to body
-                body_->AddForceAtWorldPosition(body_->GetWorldPose().rot.RotateVector(math::Vector3(fixed(0), fixed(1), fixed(2))), body_->GetWorldCoGPose().pos);
-                body_->AddRelativeTorque(math::Vector3(fixed(3), fixed(4), fixed(5)));
+                body_->AddForceAtWorldPosition(body_->GetWorldPose().rot.RotateVector(Vector3d(fixed(0), fixed(1), fixed(2))), body_->GetWorldCoGPose().pos);
+                body_->AddRelativeTorque(Vector3d(fixed(3), fixed(4), fixed(5)));
             }
 
             // apply command for steering thrusters
             if(mapper_.steer_idx.size())
             {
                 for(unsigned int i=0;i<mapper_.steer_idx.size();++i)
-                    thruster_links_[i]->AddRelativeForce(math::Vector3(0,0,-thruster_command_(mapper_.steer_idx[i])));
+                    thruster_links_[i]->AddRelativeForce(Vector3d(0,0,-thruster_command_(mapper_.steer_idx[i])));
             }
 
             // compute and publish thruster use in %

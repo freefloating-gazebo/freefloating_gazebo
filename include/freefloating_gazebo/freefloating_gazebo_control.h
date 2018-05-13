@@ -19,6 +19,7 @@ namespace gazebo
 
 class FreeFloatingControlPlugin : public ModelPlugin
 {
+
 public:
     FreeFloatingControlPlugin() {}
     ~FreeFloatingControlPlugin()
@@ -28,8 +29,8 @@ public:
         //    delete rosnode_;
     }
 
-    virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
-    virtual void Update();
+    void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
+    void Update();
 
 private:
 
@@ -97,8 +98,6 @@ private:
     // publisher to thruster percent use
     ros::Publisher thruster_use_publisher_;
     sensor_msgs::JointState thruster_use_;
-
-
 
 };
 GZ_REGISTER_MODEL_PLUGIN(FreeFloatingControlPlugin)

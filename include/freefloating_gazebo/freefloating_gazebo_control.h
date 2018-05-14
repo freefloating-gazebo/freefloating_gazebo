@@ -24,7 +24,6 @@ public:
     FreeFloatingControlPlugin() {}
     ~FreeFloatingControlPlugin()
     {
-        event::Events::DisconnectWorldUpdateBegin(this->update_event_);
         rosnode_.shutdown();
         //    delete rosnode_;
     }

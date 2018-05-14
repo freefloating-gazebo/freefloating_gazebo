@@ -19,6 +19,14 @@ using std::endl;
 using std::string;
 using ignition::math::Vector3d;
 
+#if GAZEBO_MAJOR_VERSION < 9
+#define GAZEBOLD
+    ignition::math::Vector3d v3convert(gazebo::math::Vector3 src)
+    {
+        return ignition::math::Vector3d(src.x, src.y, src.z);
+    }
+#endif
+
 namespace gazebo
 {
 
@@ -211,8 +219,13 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
                 // save name and joint limits
                 joint_names.push_back(name);
+#ifdef GAZEBOLD
                 joint_min.push_back(joint->GetLowerLimit(0).Radian());
                 joint_max.push_back(joint->GetUpperLimit(0).Radian());
+#else
+                joint_min.push_back(joint->LowerLimit());
+                joint_max.push_back(joint->UpperLimit());
+#endif
                 vel_max.push_back(joint->GetVelocityLimit(0));
             }
         }
@@ -270,7 +283,11 @@ void FreeFloatingControlPlugin::Update()
         }
 
         // deal with body control if underwater
+#ifdef GAZEBOLD
         if(control_body_ && body_command_received_ && (body_->GetWorldCoGPose().pos.z < z_surface_))
+#else
+        if(control_body_ && body_command_received_ && (body_->WorldCoGPose().Pos().Z() < z_surface_))
+#endif
         {
             mapper_.saturate(thruster_command_);
 
@@ -283,7 +300,11 @@ void FreeFloatingControlPlugin::Update()
                 // to wrench
                 fixed = mapper_.map * fixed;
                 // apply this wrench to body
-                body_->AddForceAtWorldPosition(body_->GetWorldPose().rot.RotateVector(Vector3d(fixed(0), fixed(1), fixed(2))), body_->GetWorldCoGPose().pos);
+#ifdef GAZEBOLD
+               body_->AddForceAtWorldPosition(body_->GetWorldPose().rot.RotateVector(Vector3d(fixed(0), fixed(1), fixed(2))), body_->GetWorldCoGPose().pos);
+#else
+               body_->AddForceAtWorldPosition(body_->WorldPose().Rot().RotateVector(Vector3d(fixed(0), fixed(1), fixed(2))), body_->WorldCoGPose().Pos());
+#endif
                 body_->AddRelativeTorque(Vector3d(fixed(3), fixed(4), fixed(5)));
             }
 
@@ -310,7 +331,11 @@ void FreeFloatingControlPlugin::Update()
 
         for(unsigned int i=0;i<joints_.size();++i)
         {
+#ifdef GAZEBOLD
             joint_states_.position[i] = joints_[i]->GetAngle(0).Radian();
+#else
+            joint_states_.position[i] = joints_[i]->Position();
+#endif
             joint_states_.velocity[i] = joints_[i]->GetVelocity(0);
         }
         joint_state_publisher_.publish(joint_states_);

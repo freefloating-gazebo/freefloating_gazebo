@@ -64,7 +64,7 @@ void FreeFloatingFluidPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sd
 #ifdef GAZEBOLD
         const Vector3d WORLD_GRAVITY = v3convert(world_->GetPhysicsEngine()->GetGravity().Normalize());
 #else
-        const Vector3d WORLD_GRAVITY = world_->GetPhysicsEngine()->GetGravity().Normalize();
+        const Vector3d WORLD_GRAVITY = world_->Gravity().Normalize();
 #endif
         // water surface is orthogonal to gravity
         surface_plane_.Set(WORLD_GRAVITY.X(), WORLD_GRAVITY.Y(), WORLD_GRAVITY.Z(), WORLD_GRAVITY.Dot(surface_point));
@@ -101,7 +101,11 @@ void FreeFloatingFluidPlugin::Update()
     unsigned int i;
     std::vector<model_st>::iterator model_it;
     bool found;
+#ifdef GAZEBOLD
     for(auto model: world_->GetModels())
+#else
+    for(auto model: world_->Models())
+#endif
     {
         if(!model->IsStatic())
         {
@@ -117,11 +121,19 @@ void FreeFloatingFluidPlugin::Update()
     while (model_it != parsed_models_.end())
     {
         found = false;
+#ifdef GAZEBOLD
         for(i=0;i<world_->GetModelCount(); ++i)
         {
             if(world_->GetModel(i)->GetName() == model_it->name)
                 found = true;
         }
+#else
+        for(i=0;i<world_->ModelCount(); ++i)
+        {
+            if(world_->ModelByIndex(i)->GetName() == model_it->name)
+                found = true;
+        }
+#endif
         if(!found)  // model name not in world anymore, remove the corresponding links
             RemoveDeletedModel(model_it);
         else
@@ -134,8 +146,13 @@ void FreeFloatingFluidPlugin::Update()
     for( auto & link:  buoyant_links_)
     {
         // get world position of the center of buoyancy
+#ifdef GAZEBOLD
         cob_position = v3convert(link.link->GetWorldPose().pos +
                                  link.link->GetWorldPose().rot.RotateVector(link.buoyancy_center));
+#else
+        cob_position = link.link->WorldPose().Pos() +
+                           link.link->WorldPose().Rot().RotateVector(link.buoyancy_center);
+#endif
         // start from the theoretical buoyancy force
         actual_force = link.buoyant_force;
         if(has_surface_)
@@ -156,17 +173,29 @@ void FreeFloatingFluidPlugin::Update()
 
         // get velocity damping
         // linear velocity difference in the link frame
+#ifdef GAZEBOLD
         velocity_difference = v3convert(link.link->GetWorldPose().rot.RotateVectorReverse(link.link->GetWorldLinearVel() - fluid_velocity_));
+#else
+        velocity_difference = link.link->WorldPose().Rot().RotateVectorReverse(link.link->WorldLinearVel() - fluid_velocity_);
+#endif
         // to square
         velocity_difference.X() *= fabs(velocity_difference.X());
         velocity_difference.Y() *= fabs(velocity_difference.Y());
         velocity_difference.Z() *= fabs(velocity_difference.Z());
         // apply damping coefficients
+#ifdef GAZEBOLD
         actual_force -= v3convert(link.link->GetWorldPose().rot.RotateVector(link.linear_damping * velocity_difference));
+#else
+        actual_force -= link.link->WorldPose().Rot().RotateVector(link.linear_damping * velocity_difference);
+#endif
         link.link->AddForceAtWorldPosition(actual_force, cob_position);
 
         // same for angular damping
+#ifdef GAZEBOLD
         velocity_difference = v3convert(link.link->GetRelativeAngularVel());
+#else
+        velocity_difference = link.link->RelativeAngularVel();
+#endif
         velocity_difference.X() *= fabs(velocity_difference.X());
         velocity_difference.Y() *= fabs(velocity_difference.Y());
         velocity_difference.Z() *= fabs(velocity_difference.Z());
@@ -177,13 +206,14 @@ void FreeFloatingFluidPlugin::Update()
         state.header.frame_id = "world";
         state.header.stamp = ros::Time::now();
         Vector3d vec;
-        math::Pose pose;
         for(const auto & model: parsed_models_)
         {
             // which link
             state.child_frame_id = "base_link";
-            // write absolute pose
-            pose = model.model_ptr->GetWorldPose();
+
+#ifdef GAZEBOLD
+            // write absolute pose            
+            auto pose = model.model_ptr->GetWorldPose();
             state.pose.pose.position.x = pose.pos.x;
             state.pose.pose.position.y = pose.pos.y;
             state.pose.pose.position.z = pose.pos.z;
@@ -192,7 +222,7 @@ void FreeFloatingFluidPlugin::Update()
             state.pose.pose.orientation.z = pose.rot.z;
             state.pose.pose.orientation.w = pose.rot.w;
 
-            // write relative linear velocity
+            // write relative linear velocity            
             vec = v3convert(model.model_ptr->GetRelativeLinearVel());
             state.twist.twist.linear.x = vec.X();
             state.twist.twist.linear.y = vec.Y();
@@ -202,6 +232,28 @@ void FreeFloatingFluidPlugin::Update()
             state.twist.twist.angular.x = vec.X();
             state.twist.twist.angular.y = vec.Y();
             state.twist.twist.angular.z = vec.Z();
+#else
+            // write absolute pose
+            auto pose = model.model_ptr->WorldPose();
+            state.pose.pose.position.x = pose.Pos().X();
+            state.pose.pose.position.y = pose.Pos().Y();
+            state.pose.pose.position.z = pose.Pos().Z();
+            state.pose.pose.orientation.x = pose.Rot().X();
+            state.pose.pose.orientation.y = pose.Rot().Y();
+            state.pose.pose.orientation.z = pose.Rot().Z();
+            state.pose.pose.orientation.w = pose.Rot().W();
+
+            // write relative linear velocity
+            vec = model.model_ptr->RelativeLinearVel();
+            state.twist.twist.linear.x = vec.X();
+            state.twist.twist.linear.y = vec.Y();
+            state.twist.twist.linear.z = vec.Z();
+            // write relative angular velocity
+            vec = model.model_ptr->RelativeAngularVel();
+            state.twist.twist.angular.x = vec.X();
+            state.twist.twist.angular.y = vec.Y();
+            state.twist.twist.angular.z = vec.Z();
+#endif
 
             // publish
             model.state_publisher.publish(state);
@@ -236,8 +288,11 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
     // links from urdf
     TiXmlDocument urdf_doc;
     urdf_doc.Parse(urdf_content.c_str(), 0);
-
+#ifdef GAZEBOLD
     const Vector3d WORLD_GRAVITY = v3convert(world_->GetPhysicsEngine()->GetGravity());
+#else
+    const Vector3d WORLD_GRAVITY = world_->Gravity();
+#endif
 
     TiXmlElement* urdf_root = urdf_doc.FirstChildElement();
     TiXmlNode* urdf_node, *link_node, *buoy_node;
@@ -275,8 +330,13 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
 
                         // get data from urdf
                         // default values
+#ifdef GAZEBOLD
                         new_buoy_link.buoyancy_center = v3convert(sdf_link->GetInertial()->GetCoG());
                         new_buoy_link.linear_damping = new_buoy_link.angular_damping = 5 * Vector3d::One * sdf_link->GetInertial()->GetMass();
+#else
+                        new_buoy_link.buoyancy_center = sdf_link->GetInertial()->CoG();
+                        new_buoy_link.linear_damping = new_buoy_link.angular_damping = 5 * Vector3d::One * sdf_link->GetInertial()->Mass();
+#endif
 
                         compensation = 0;
                         for(buoy_node = link_node->FirstChild(); buoy_node != 0; buoy_node = buoy_node->NextSibling())
@@ -306,9 +366,11 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
                             else
                                 ROS_WARN("Unknown tag <%s/> in buoyancy node for model %s", buoy_node->ValueStr().c_str(), _model->GetName().c_str());
                         }
-
+#ifdef GAZEBOLD
                         new_buoy_link.buoyant_force = -compensation * sdf_link->GetInertial()->GetMass() * WORLD_GRAVITY;
-
+#else
+                        new_buoy_link.buoyant_force = -compensation * sdf_link->GetInertial()->Mass() * WORLD_GRAVITY;
+#endif
                         // store this link
                         buoyant_links_.push_back(new_buoy_link);
                     }

@@ -93,6 +93,7 @@ add_executable(pid_control src/freefloating_pids_main.cpp
     include/freefloating_gazebo/thruster_mapper.h src/thruster_mapper.cpp)
 target_link_libraries(pid_control ${catkin_LIBRARIES})
 add_dependencies(pid_control ${${PROJECT_NAME}_EXPORTED_TARGETS})
+add_dependencies(pid_control freefloating_gazebo_gencpp)
 
 # test Butterworth filter
 add_executable(butter test/testButter.cpp)

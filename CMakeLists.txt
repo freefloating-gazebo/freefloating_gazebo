@@ -40,7 +40,7 @@ generate_messages(
 
 catkin_package(
  INCLUDE_DIRS include
- LIBRARIES ${PROJECT_NAME} 
+ #LIBRARIES ${PROJECT_NAME} 
  CATKIN_DEPENDS
     roscpp
     std_msgs

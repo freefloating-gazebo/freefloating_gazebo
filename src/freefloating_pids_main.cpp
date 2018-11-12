@@ -27,10 +27,10 @@ int main(int argc, char ** argv)
     }
 
     // recheck control_body against wrench vs thruster control (this basic PID can only do wrench)
-    if(control_node.hasParam("config/body/control_type"))
+    if(control_node.hasParam("config/body/type"))
     {
         std::string control_type;
-        control_node.getParam("config/body/control_type", control_type);
+        control_node.getParam("config/body/type", control_type);
         if(control_type == "thruster")
         {
             // check for a flag that tells us to use PID however

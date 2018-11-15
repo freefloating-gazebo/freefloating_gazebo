@@ -146,7 +146,7 @@ def create_spawner(node, gazebo_model_file):
         param_node = etree.SubElement(group_node, 'param', name = '%s_description' % name)
         spawn_args.append('%s -param %s_description' % (name, name))
     
-    param_node.set('command', '$(find xacro)/xacro --inorder %s' % abspath_to_roslaunch(gazebo_model_file))
+    param_node.set('command', '$(find xacro)/xacro %s' % abspath_to_roslaunch(gazebo_model_file))
 
     # spawner node
     spawn_node = etree.SubElement(group_node, 'node')

@@ -169,7 +169,6 @@ void FreeFloatingControlPlugin::Update()
       // build and apply wrench for fixed thrusters
       if(mapper_.fixed_idx.size())
       {
-
         Eigen::VectorXd fixed(mapper_.fixed_idx.size());
         for(size_t i=0;i<mapper_.fixed_idx.size();++i)
           fixed(static_cast<Eigen::Index>(i)) = thruster_command_(static_cast<Eigen::Index>(mapper_.fixed_idx[i]));

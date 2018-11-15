@@ -263,8 +263,6 @@ void FreeFloatingFluidPlugin::Update()
     }
 }
 
-
-
 void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
 {
     // define new model structure: name / pointer / publisher to odometry

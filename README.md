@@ -1,7 +1,4 @@
-freefloating_gazebo
-===================
-
-A Gazebo plugin to simulate underwater vehicles and visualize with UWsim.
+# A Gazebo plugin to simulate and control underwater vehicles
 
 ## Gazebo plugins
 The package builds two Gazebo plugins:
@@ -10,7 +7,7 @@ The package builds two Gazebo plugins:
 simulates buoyancy and viscous force from water
 
 - freefloating_gazebo_control (model plugin)
-opens topics for wrench and joint states, in order to control the considered robots
+opens topics for thrusters and joints, in order to control the considered robots
 
 ## Built-in PID control
 
@@ -18,7 +15,7 @@ An external PID controler is available: pid_control.
 
 These PID's allow position, velocity or effort control of the vehicle body and joints.
 
-Subscribes to setpoint and states topics, and publishes on the wrench and torque topics that are subscribed to by the freefloating_gazebo_control plugin.
+Subscribes to setpoint and states, and publishes on the thruster and torque topics that are subscribed to by the freefloating_gazebo_control plugin.
 Private parameters `body_control` and `joint_control` allow setting the default mode (body: position / velocity / effort (body wrench), joint: position / velocity / effort).
 
 This PID advertises the corresponding services to switch some of the axis (joint names or x, y, z, roll, pitch, yaw) to another type of control. 

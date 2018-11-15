@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(freefloating_gazebo)
 add_compile_options(-std=c++11)
+set(CMAKE_BUILD_TYPE Debug)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -39,8 +40,8 @@ generate_messages(
 )
 
 catkin_package(
- INCLUDE_DIRS include
- #LIBRARIES ${PROJECT_NAME} 
+ INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIRS}
+ LIBRARIES ${PROJECT_NAME}
  CATKIN_DEPENDS
     roscpp
     std_msgs
@@ -59,6 +60,11 @@ include_directories(include ${Boost_INCLUDE_DIR}
                     ${EIGEN3_INCLUDE_DIRS})
 
 
+add_library(freefloating_gazebo include/freefloating_gazebo/thruster_mapper.h src/thruster_mapper.cpp)
+target_link_libraries(freefloating_gazebo ${catkin_LIBRARIES})
+
+
+
 if(gazebo_FOUND)
 
 link_directories(${GAZEBO_LIBRARY_DIRS})
@@ -70,10 +76,8 @@ target_link_libraries(freefloating_gazebo_fluid ${catkin_LIBRARIES} ${GAZEBO_LIB
 
 # model plugin subscribes to body and joint efforts and applies them in Gazebo
 add_library(freefloating_gazebo_control src/freefloating_gazebo_control.cpp
-                                        include/freefloating_gazebo/freefloating_gazebo_control.h
-                                        include/freefloating_gazebo/thruster_mapper.h
-                                        src/thruster_mapper.cpp)
-target_link_libraries(freefloating_gazebo_control ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+                                        include/freefloating_gazebo/freefloating_gazebo_control.h)
+target_link_libraries(freefloating_gazebo_control ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} ${PROJECT_NAME})
 
 install(TARGETS freefloating_gazebo_fluid
                 freefloating_gazebo_control
@@ -86,24 +90,23 @@ endif()
 # node to perform PID control for body (thrusters) and joints
 add_executable(pid_control src/freefloating_pids_main.cpp
     include/freefloating_gazebo/butterworth.h
-    include/freefloating_gazebo/thruster_mapper.h
     src/freefloating_pids.cpp include/freefloating_gazebo/freefloating_pids.h
     src/freefloating_pids_body.cpp include/freefloating_gazebo/freefloating_pids_body.h
-    src/freefloating_pids_joint.cpp include/freefloating_gazebo/freefloating_pids_joint.h
-    include/freefloating_gazebo/thruster_mapper.h src/thruster_mapper.cpp)
-target_link_libraries(pid_control ${catkin_LIBRARIES})
+    src/freefloating_pids_joint.cpp include/freefloating_gazebo/freefloating_pids_joint.h)
+target_link_libraries(pid_control ${catkin_LIBRARIES} ${PROJECT_NAME})
 add_dependencies(pid_control ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_dependencies(pid_control freefloating_gazebo_gencpp)
+
 
 # test Butterworth filter
 add_executable(butter test/testButter.cpp)
 target_link_libraries(butter ${catkin_LIBRARIES})
-add_executable(sdf_parse test/sdf_parse.cpp
-                include/freefloating_gazebo/thruster_mapper.h
-                src/thruster_mapper.cpp)
-target_link_libraries(sdf_parse ${catkin_LIBRARIES} ${catkin_LIBRARIES})
 
-install(TARGETS pid_control
+# test thruster mapper
+add_executable(sdf_parse test/sdf_parse.cpp)
+target_link_libraries(sdf_parse ${catkin_LIBRARIES} ${catkin_LIBRARIES} ${PROJECT_NAME})
+
+install(TARGETS pid_control ${PROJECT_NAME}
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

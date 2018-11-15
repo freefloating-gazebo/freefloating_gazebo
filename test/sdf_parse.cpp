@@ -14,6 +14,4 @@ mapper.parse(nh);
 std::cout << mapper.map << std::endl;
 for(auto v: mapper.max_vel)
     std::cout << v << " ";
-
-
 }

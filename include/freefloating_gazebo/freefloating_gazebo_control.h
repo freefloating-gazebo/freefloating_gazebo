@@ -25,7 +25,6 @@ public:
     ~FreeFloatingControlPlugin()
     {
         rosnode_.shutdown();
-        //    delete rosnode_;
     }
 
     void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
@@ -36,14 +35,10 @@ private:
     // parse received joint command (joint states)
     void JointCommandCallBack(const sensor_msgs::JointStateConstPtr &_msg)
     {
-        if(!control_joints_)
-            return;
         // store received joint state
         joint_command_ = *_msg;
         joint_command_received_ = true;
     }
-    // parse received body command
-    void BodyCommandCallBack(const geometry_msgs::WrenchConstPtr& _msg);
     // parse received thruster command
     void ThrusterCommandCallBack(const sensor_msgs::JointStateConstPtr& _msg);
     // parse switch service
@@ -64,7 +59,6 @@ private:
     // -- body control ----------------------------------------
     // model body data
     physics::LinkPtr body_;
-    bool control_body_, wrench_control_;
 
     // thruster control
     ffg::ThrusterMapper mapper_;
@@ -73,14 +67,9 @@ private:
 
     // subscriber
     ros::Subscriber body_command_subscriber_;
-    std::string body_command_topic_;
     bool body_command_received_;
 
     // -- joint control ----------------------------------------
-    // model joint data
-    std::vector<physics::JointPtr> joints_;
-    bool control_joints_;
-
     // subscriber
     ros::Subscriber joint_command_subscriber_;
     std::string joint_command_topic_;

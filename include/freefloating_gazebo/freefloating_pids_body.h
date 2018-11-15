@@ -2,7 +2,7 @@
 #define FREEFLOATINGBODYPID_H
 
 #include <ros/ros.h>
-#include <geometry_msgs/Wrench.h>
+#include <geometry_msgs/WrenchStamped.h>
 #include <freefloating_gazebo/freefloating_pids.h>
 #include <control_toolbox/pid.h>
 #include <nav_msgs/Odometry.h>
@@ -14,7 +14,7 @@
 class FreeFloatingBodyPids : public FreeFloatingPids
 {
 public:
-    void Init(const ros::NodeHandle &_node,
+    void Init(ros::NodeHandle &nh,
               ros::Duration&_dt,
               const std::vector<std::string>&_controlled_axes,
               std::string default_mode = "position");
@@ -24,9 +24,9 @@ public:
     // parse received velocity setpoint
     void VelocitySPCallBack(const geometry_msgs::TwistStampedConstPtr & _msg);
     // parse received wrench
-    void WrenchSPCallBack(const geometry_msgs::WrenchConstPtr & _msg)
+    void WrenchSPCallBack(const geometry_msgs::WrenchStampedConstPtr & _msg)
     {
-        wrench_command_ = *_msg;
+        wrench_command_ = _msg->wrench;
     }
 
     // parse received body measure
@@ -39,6 +39,9 @@ public:
     inline geometry_msgs::Wrench WrenchCommand() {return wrench_command_;}
 
 private:
+
+    ros::Subscriber position_sp_subscriber, velocity_sp_subscriber,
+        wrench_sp_subscriber, state_subscriber;
 
     // errors are stored in Vector3
     Eigen::Vector3d pose_lin_error_, pose_ang_error_, velocity_lin_error_, velocity_ang_error_;

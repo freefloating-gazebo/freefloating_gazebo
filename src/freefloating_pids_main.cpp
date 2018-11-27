@@ -1,6 +1,6 @@
 #include <freefloating_gazebo/freefloating_pids_body.h>
 #include <freefloating_gazebo/freefloating_pids_joint.h>
-#include <freefloating_gazebo/thruster_mapper.h>
+#include <freefloating_gazebo/thruster_allocator.h>
 #include <memory>
 
 using std::cout;
@@ -14,12 +14,11 @@ int main(int argc, char ** argv)
   ros::NodeHandle control_node(nh, "controllers");
   ros::NodeHandle priv("~");
 
-  ffg::ThrusterMapper mapper;
-  mapper.parse(nh);
+  ffg::ThrusterAllocator allocator(nh);
 
   // wait for Gazebo running
   ros::service::waitForService("/gazebo/unpause_physics");
-  const bool control_body = mapper.has_thrusters();
+  const bool control_body = allocator.has_thrusters();
   const bool control_joints = FreeFloatingJointPids::writeJointLimits(nh);
 
   // loop rate
@@ -41,7 +40,7 @@ int main(int argc, char ** argv)
     if(priv.hasParam("body_control"))
       priv.getParam("body_control", default_mode);
 
-    const auto controlled_axes = mapper.initControl(nh);
+    const auto controlled_axes = allocator.initControl(nh);
     body_pid = std::unique_ptr<FreeFloatingBodyPids>(new FreeFloatingBodyPids);
     body_pid->Init(nh, dt, controlled_axes, default_mode);
 
@@ -77,7 +76,7 @@ int main(int argc, char ** argv)
   {
     // update body and publish
     if(control_body && body_pid->UpdatePID())
-        body_command_publisher.publish(mapper.wrench2Thrusters(body_pid->WrenchCommand()));
+        body_command_publisher.publish(allocator.wrench2Thrusters(body_pid->WrenchCommand()));
 
     // update joints and publish
     if(control_joints && joint_pid->UpdatePID())

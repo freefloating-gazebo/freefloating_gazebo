@@ -64,6 +64,7 @@ class Butterworth_nD
 {
 public:
     // n identical filters
+    Butterworth_nD() {}
     Butterworth_nD(int size, double frequency, double dt)
     {
         filters.resize(size, Butterworth(frequency, dt));

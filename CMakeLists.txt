@@ -60,7 +60,11 @@ include_directories(include ${Boost_INCLUDE_DIR}
                     ${EIGEN3_INCLUDE_DIRS})
 
 
-add_library(freefloating_gazebo include/freefloating_gazebo/thruster_mapper.h src/thruster_mapper.cpp)
+add_library(freefloating_gazebo
+  include/freefloating_gazebo/butterworth.h
+    include/freefloating_gazebo/hydro_link.h src/hydro_link.cpp
+    include/freefloating_gazebo/hydro_model_parser.h src/hydro_model_parser.cpp
+  include/freefloating_gazebo/thruster_allocator.h src/thruster_allocator.cpp)
 target_link_libraries(freefloating_gazebo ${catkin_LIBRARIES})
 
 

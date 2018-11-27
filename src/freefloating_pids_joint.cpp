@@ -119,21 +119,6 @@ bool FreeFloatingJointPids::UpdatePID()
       UpdatePositionPID();
       updated = true;
 
-
-      for(unsigned int i=0;i<position_error.size();++i)
-      {
-        auto &axis = axes[i];
-        if(axis.name == "Slew")
-        {
-
-        std::cout << axis.name << ": \n";
-        std::cout << "  - measure = " << position_filtered_measure[i] << '\n';
-        std::cout << "  - setpoint = " << joint_setpoint.position[i] << '\n';
-        std::cout << "  - error = " << position_error[i] << '\n';
-        std::cout << "  - command = " << joint_command.effort[i] << '\n';
-        }
-      }
-
       // has written new velocity setpoint
     }
 

@@ -10,6 +10,8 @@
 #include <gazebo/physics/World.hh>
 #include <gazebo/physics/PhysicsEngine.hh>
 #include <freefloating_gazebo/freefloating_gazebo_control.h>
+#include <freefloating_gazebo/hydro_model_parser.h>
+#include <algorithm>
 #include <chrono>
 #include <thread>
 #include <functional>
@@ -26,6 +28,16 @@ ignition::math::Vector3d v3convert(gazebo::math::Vector3 src)
   return ignition::math::Vector3d(src.x, src.y, src.z);
 }
 #endif
+
+
+template <typename T>
+void clamp(T& in, T low, T high)
+{
+  if(in < low)
+    in = low;
+  else if(in > high)
+    in = high;
+}
 
 namespace gazebo
 {
@@ -62,33 +74,43 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
     body_ = model_->GetLinks()[0];
 
   // parse thruster elements
-  mapper_.parse(_sdf->ToString(""), false);
-  // add steering thrusters if any
+  ffg::HydroModelParser parser;
+  parser.parseThusters(_sdf->ToString(""));
+  const auto n_thr = parser.thrusterInfo(thruster_fixed,
+                                            thruster_steering,
+                                            thruster_use_.name,
+                                            thruster_max);
+  // find link of steering thrusters
+  auto idx = thruster_steering.begin();
   thruster_links_.clear();
-  for(const auto &name: mapper_.names)
+  while(idx != thruster_steering.end())
   {
-    for(auto link: _model->GetLinks())
+    auto link = _model->GetLink(thruster_use_.name[*idx]);
+    if(link != nullptr)
     {
-      if(link->GetName() == name)
-      {
-        thruster_links_.push_back(link);
-        break;
-      }
+      thruster_links_.push_back(link);
+      idx++;
+    }
+    else
+    {
+      ROS_WARN("%s: thruster %s referenced but link not found",
+               _model->GetName().c_str(),
+               thruster_use_.name[*idx].c_str());
+      idx = thruster_steering.erase(idx);
     }
   }
 
-  if(!mapper_.has_thrusters())
-    ROS_INFO("No thrusters found in %s", _model->GetName().c_str());
+  if(!n_thr)
+    ROS_INFO("%s: no thrusters found", _model->GetName().c_str());
 
   // *** SET UP BODY CONTROL
-  char param[FILENAME_MAX];
-  if(mapper_.has_thrusters())
+  if(n_thr)
   {
+    thruster_map = parser.thrusterMap();
     // initialize subscriber to body commands
-    thruster_command_.resize(static_cast<long>(mapper_.names.size()));
+    thruster_command_.resize(static_cast<long>(n_thr));
     // initialize publisher to thruster_use
-    thruster_use_.name = mapper_.names;
-    thruster_use_.position.resize(mapper_.names.size());
+    thruster_use_.position.resize(n_thr);
     thruster_use_publisher_ = rosnode_.advertise<sensor_msgs::JointState>("thruster_use", 1);
 
     ros::SubscribeOptions ops = ros::SubscribeOptions::create<sensor_msgs::JointState>(
@@ -132,7 +154,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
   update_event_ = event::Events::ConnectWorldUpdateBegin(std::bind(&FreeFloatingControlPlugin::Update, this));
 
   ros::spinOnce();
-  ROS_INFO("Started FreeFloating Control Plugin for %s.", _model->GetName().c_str());
+  ROS_INFO("%s: Started FreeFloating Control Plugin.", _model->GetName().c_str());
 }
 
 void FreeFloatingControlPlugin::Update()
@@ -161,20 +183,20 @@ void FreeFloatingControlPlugin::Update()
 #ifdef GAZEBOLD
     if(control_body_ && body_command_received_ && (body_->GetWorldCoGPose().pos.z < z_surface_))
 #else
-    if(mapper_.has_thrusters() && body_command_received_ && (body_->WorldCoGPose().Pos().Z() < z_surface_))
+    if(thruster_max.size() && body_command_received_ && (body_->WorldCoGPose().Pos().Z() < z_surface_))
 #endif
     {
-      mapper_.saturate(thruster_command_);
+      for(uint i = 0; i < thruster_command_.size(); ++i)
+        clamp(thruster_command_[i], -thruster_max[i], thruster_max[i]);
 
       // build and apply wrench for fixed thrusters
-      if(mapper_.fixed_idx.size())
+      if(thruster_fixed.size())
       {
-
-        Eigen::VectorXd fixed(mapper_.fixed_idx.size());
-        for(size_t i=0;i<mapper_.fixed_idx.size();++i)
-          fixed(static_cast<Eigen::Index>(i)) = thruster_command_(static_cast<Eigen::Index>(mapper_.fixed_idx[i]));
+        Eigen::VectorXd fixed(thruster_fixed.size());
+        for(uint i=0;i<thruster_fixed.size();++i)
+          fixed[i] = thruster_command_[thruster_fixed[i]];
         // to wrench
-        fixed = mapper_.map * fixed;
+        fixed = thruster_map * fixed;
         // apply this wrench to body
 #ifdef GAZEBOLD
         body_->AddForceAtWorldPosition(body_->GetWorldPose().rot.RotateVector(Vector3d(fixed(0), fixed(1), fixed(2))), body_->GetWorldCoGPose().pos);
@@ -185,21 +207,21 @@ void FreeFloatingControlPlugin::Update()
       }
 
       // apply command for steering thrusters
-      if(mapper_.steer_idx.size())
+      if(thruster_steering.size())
       {
-        for(unsigned int i=0;i<mapper_.steer_idx.size();++i)
-          thruster_links_[i]->AddRelativeForce(Vector3d(0,0,-thruster_command_(mapper_.steer_idx[i])));
+        for(unsigned int i=0;i<thruster_steering.size();++i)
+          thruster_links_[i]->AddRelativeForce(Vector3d(0,0,-thruster_command_(thruster_steering[i])));
       }
 
       // compute and publish thruster use in %
       for(size_t i=0;i<thruster_command_.size();++i)
-        thruster_use_.position[i] = 100*std::abs(thruster_command_(i) / mapper_.max_command[i]);
+        thruster_use_.position[i] = 100*std::abs(thruster_command_(i) / thruster_max[i]);
       thruster_use_publisher_.publish(thruster_use_);
     }
   }
 
   // publish joint states anyway
-  double t = ros::Time::now().toSec();
+  const double t = ros::Time::now().toSec();
   if((t-t_prev_) > update_T_ && model_->GetJointCount())
   {
     t_prev_ = t;
@@ -220,36 +242,34 @@ void FreeFloatingControlPlugin::Update()
 
 void FreeFloatingControlPlugin::ThrusterCommandCallBack(const sensor_msgs::JointStateConstPtr &_msg)
 {
-  if(!mapper_.has_thrusters())
+  if(!thruster_max.size())
     return;
 
   const bool read_effort = _msg->effort.size();
 
   if(read_effort && (_msg->name.size() != _msg->effort.size()))
   {
-    ROS_WARN("Received inconsistent thruster command, name and effort dimension do not match");
+    ROS_WARN("%s: Received inconsistent thruster command, name and effort dimension do not match",
+             model_->GetName().c_str());
     return;
   }
-  else
-    if(!read_effort && (_msg->name.size() != _msg->position.size()))
-    {
-      ROS_WARN("Received inconsistent thruster command, name and position dimension do not match");
-      return;
-    }
+  else if(!read_effort && (_msg->name.size() != _msg->position.size()))
+  {
+    ROS_WARN("%s: Received inconsistent thruster command, name and position dimension do not match",
+             model_->GetName().c_str());
+    return;
+  }
 
   body_command_received_ = true;
   // store thruster command
-  for(unsigned int i=0;i<mapper_.names.size();++i)
+  for(unsigned int i=0;i<thruster_use_.name.size();++i)
   {
     for(unsigned int j=0;j<_msg->name.size();++j)
     {
-      if(mapper_.names[i] == _msg->name[j])
+      if(thruster_use_.name[i] == _msg->name[j])
         thruster_command_(i) = read_effort?_msg->effort[j]:_msg->position[j];
     }
   }
 }
-
-
-
 
 }   // namespace gazebo

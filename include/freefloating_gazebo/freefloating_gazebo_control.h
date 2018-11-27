@@ -12,7 +12,6 @@
 #include <std_msgs/Float32MultiArray.h>
 #include <std_srvs/Empty.h>
 #include <eigen3/Eigen/Core>
-#include <freefloating_gazebo/thruster_mapper.h>
 
 namespace gazebo
 {
@@ -61,9 +60,11 @@ private:
     physics::LinkPtr body_;
 
     // thruster control
-    ffg::ThrusterMapper mapper_;
+    Eigen::MatrixXd thruster_map;
+    std::vector<uint> thruster_fixed, thruster_steering;
     std::vector<physics::LinkPtr> thruster_links_;
     Eigen::VectorXd thruster_command_;
+    std::vector<double> thruster_max;
 
     // subscriber
     ros::Subscriber body_command_subscriber_;

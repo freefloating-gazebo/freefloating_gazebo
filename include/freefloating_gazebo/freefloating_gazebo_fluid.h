@@ -7,6 +7,8 @@
 #include <geometry_msgs/Vector3.h>
 #include <geometry_msgs/Pose.h>
 #include <nav_msgs/Odometry.h>
+#include <Eigen/Core>
+#include <freefloating_gazebo/hydro_link.h>
 
 namespace gazebo
 {
@@ -33,11 +35,8 @@ private:
     {
         std::string model_name;
         physics::LinkPtr link;
-        Vector3d buoyant_force;
         Vector3d buoyancy_center;
-        Vector3d linear_damping;
-        Vector3d angular_damping;
-        double limit;
+        ffg::HydroLink hydro;
     };
 
     struct model_st
@@ -47,12 +46,22 @@ private:
         ros::Publisher state_publisher;
     };
 
+    Vector3d eigen2Gazebo(const Eigen::Vector3d &in)
+    {
+      return Vector3d(in.x(), in.y(), in.z());
+    }
+
+    Eigen::Vector3d gazebo2Eigen(const Vector3d &in)
+    {
+      return Eigen::Vector3d(in.X(), in.Y(), in.Z());
+    }
+
     // parse a Vector3 string
     void ReadVector3(const std::string &_string, Vector3d &_vector);
     // parse a new model
     void ParseNewModel(const physics::ModelPtr &_model);
     // removes a deleted model
-    void RemoveDeletedModel(std::vector<model_st>::iterator &_model_it);
+    void RemoveModel(std::vector<model_st>::iterator &model);
     // parse received fluid velocity message
     void FluidVelocityCallBack(const geometry_msgs::Vector3ConstPtr& _msg);
 

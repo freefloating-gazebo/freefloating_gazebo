@@ -41,7 +41,11 @@ void FreeFloatingFluidPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sd
 {
   ROS_INFO("Loading freefloating_fluid plugin");
   this->world_ = _world;
-  world_->Physics()->GetUpdatePeriod();
+ #ifdef GAZEBOLD
+  world_->GetPhysicsEngine()->GetUpdatePeriod();
+#else
+   world_->Physics()->GetUpdatePeriod();
+#endif
   // register ROS node
   rosnode_ = new ros::NodeHandle("gazebo");
 
@@ -180,8 +184,13 @@ void FreeFloatingFluidPlugin::Update()
     const auto dyn_force = link.hydro.dynamicForce(velocity);
 
     // apply force
+#ifdef GAZEBOLD
+    link.link->AddForceAtWorldPosition(force + v3convert(link.link->GetWorldPose().rot.RotateVector(eigen2Gazebo(dyn_force.head<3>()))),
+                                       cob_position);
+#else
     link.link->AddForceAtWorldPosition(force + link.link->WorldPose().Rot().RotateVector(eigen2Gazebo(dyn_force.head<3>())),
                                        cob_position);
+#endif
     // apply torque
     link.link->AddRelativeTorque(eigen2Gazebo(dyn_force.tail<3>()));
 
@@ -280,7 +289,11 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
     {
       // this link is subject to buoyancy, create an instance
       buoyant_links_.push_back({_model->GetName(), *sdf_link, eigen2Gazebo(link.second.buoyancy_center), link.second});
+#ifdef GAZEBOLD
+      buoyant_links_.back().hydro.initFilters(world_->GetPhysicsEngine()->GetUpdatePeriod());
+#else
       buoyant_links_.back().hydro.initFilters(world_->Physics()->GetUpdatePeriod());
+#endif
       }
   }
 

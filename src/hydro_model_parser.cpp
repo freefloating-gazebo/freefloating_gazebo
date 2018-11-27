@@ -111,7 +111,10 @@ void HydroModelParser::parseLinks(tinyxml2::XMLElement *root, bool display)
 {
   // TODO regroup properties of rigidly linked links into the root one for Gazebo compat
   urdf::Model model;
-  model.initXml(root);
+  // build urdf from string for TinyXLM1 compat
+  tinyxml2::XMLPrinter printer;
+  root->Accept(&printer);
+  model.initString(printer.CStr());
 
   for(auto link = root->FirstChildElement("link"); link != nullptr; link = link->NextSiblingElement("link"))
   {

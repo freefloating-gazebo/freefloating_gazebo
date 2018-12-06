@@ -1,13 +1,29 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(freefloating_gazebo)
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
+find_package(gazebo)
+
+if(gazebo_FOUND)
+    find_package(catkin REQUIRED COMPONENTS
+    roscpp
+    std_msgs
+    std_srvs
+    gazebo_msgs
+    geometry_msgs
+    sensor_msgs
+    urdf
+    control_toolbox
+    rostime
+    nav_msgs
+    message_generation
+    )
+else()
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   std_srvs
-  gazebo_msgs
   geometry_msgs
   sensor_msgs
   urdf
@@ -16,8 +32,9 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   message_generation
 )
+endif()
 
-find_package(gazebo)
+
 find_package(Eigen3)
 if(NOT EIGEN3_FOUND)
   # Fallback to cmake_modules

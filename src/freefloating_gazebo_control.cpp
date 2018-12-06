@@ -181,7 +181,7 @@ void FreeFloatingControlPlugin::Update()
 
     // deal with body control if underwater
 #ifdef GAZEBOLD
-    if(control_body_ && body_command_received_ && (body_->GetWorldCoGPose().pos.z < z_surface_))
+    if(thruster_max.size() && body_command_received_ && (body_->GetWorldCoGPose().pos.z < z_surface_))
 #else
     if(thruster_max.size() && body_command_received_ && (body_->WorldCoGPose().Pos().Z() < z_surface_))
 #endif

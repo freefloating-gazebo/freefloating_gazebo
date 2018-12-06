@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(freefloating_gazebo)
-add_compile_options(-std=c++11)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Debug)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -69,6 +69,17 @@ target_link_libraries(freefloating_gazebo ${catkin_LIBRARIES})
 
 
 
+# node to perform PID control for body (thrusters) and joints
+add_executable(pid_control src/freefloating_pids_main.cpp
+    include/freefloating_gazebo/butterworth.h
+    src/freefloating_pids.cpp include/freefloating_gazebo/freefloating_pids.h
+    src/freefloating_pids_body.cpp include/freefloating_gazebo/freefloating_pids_body.h
+    src/freefloating_pids_joint.cpp include/freefloating_gazebo/freefloating_pids_joint.h)
+target_link_libraries(pid_control ${catkin_LIBRARIES} ${PROJECT_NAME})
+add_dependencies(pid_control ${${PROJECT_NAME}_EXPORTED_TARGETS})
+add_dependencies(pid_control freefloating_gazebo_gencpp)
+
+
 if(gazebo_FOUND)
 
 link_directories(${GAZEBO_LIBRARY_DIRS})
@@ -88,27 +99,21 @@ install(TARGETS freefloating_gazebo_fluid
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-endif()
-
-
-# node to perform PID control for body (thrusters) and joints
-add_executable(pid_control src/freefloating_pids_main.cpp
-    include/freefloating_gazebo/butterworth.h
-    src/freefloating_pids.cpp include/freefloating_gazebo/freefloating_pids.h
-    src/freefloating_pids_body.cpp include/freefloating_gazebo/freefloating_pids_body.h
-    src/freefloating_pids_joint.cpp include/freefloating_gazebo/freefloating_pids_joint.h)
-target_link_libraries(pid_control ${catkin_LIBRARIES} ${PROJECT_NAME})
-add_dependencies(pid_control ${${PROJECT_NAME}_EXPORTED_TARGETS})
-add_dependencies(pid_control freefloating_gazebo_gencpp)
-
-
+        
+install(DIRECTORY world
+        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+        
+        
 # test Butterworth filter
 add_executable(butter test/testButter.cpp)
 target_link_libraries(butter ${catkin_LIBRARIES})
 
 # test thruster mapper
 add_executable(sdf_parse test/sdf_parse.cpp)
-target_link_libraries(sdf_parse ${catkin_LIBRARIES} ${catkin_LIBRARIES} ${PROJECT_NAME})
+target_link_libraries(sdf_parse ${catkin_LIBRARIES} ${catkin_LIBRARIES} ${PROJECT_NAME})  
+
+endif()
+
 
 install(TARGETS pid_control ${PROJECT_NAME}
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
@@ -119,6 +124,5 @@ install(DIRECTORY include/${PROJECT_NAME}/
         DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
 
 install(DIRECTORY scripts
-                  world
                   srv
             DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

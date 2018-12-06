@@ -26,7 +26,7 @@ Eigen::Vector3d HydroLink::buoyancyForce(double surface_distance)
   return force;
 }
 
-Eigen::Vector6d HydroLink::dynamicForce(Eigen::Vector6d &vel)
+Eigen::Vector6d HydroLink::hydroDynamicForce(Eigen::Vector6d &vel)
 {
   Eigen::Vector6d force(Eigen::Vector6d::Zero());
 

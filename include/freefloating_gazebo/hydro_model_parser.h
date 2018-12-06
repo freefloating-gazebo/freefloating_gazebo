@@ -62,8 +62,15 @@ protected:
     return strcmp(elem->Attribute("name"), name.c_str()) == 0;
   }
 
-  void addBuoyancy(const tinyxml2::XMLElement* elem, const std::string &name, const urdf::InertialSharedPtr &inertial);
-  void addHydrodynamics(const tinyxml2::XMLElement* elem, const std::string &name);
+  double readDensity(const tinyxml2::XMLElement* elem) const
+  {
+    const auto node = elem->FirstChildElement("density");
+    if(node)
+      return atof(node->GetText());
+    return 1;
+  }
+  void addBuoyancy(const tinyxml2::XMLElement* elem, const std::string &name, const urdf::InertialSharedPtr &inertial, double density);
+  void addHydrodynamics(const tinyxml2::XMLElement* elem, const std::string &name, double density);
 
 };
 

@@ -111,31 +111,37 @@ void HydroModelParser::parseLinks(tinyxml2::XMLElement *root, bool display)
 {
   // TODO regroup properties of rigidly linked links into the root one for Gazebo compat
   urdf::Model model;
-  model.initXml(root);
+  // build urdf from string for TinyXLM1 compat
+  tinyxml2::XMLPrinter printer;
+  root->Accept(&printer);
+  model.initString(printer.CStr());
 
   for(auto link = root->FirstChildElement("link"); link != nullptr; link = link->NextSiblingElement("link"))
   {
     const std::string name(link->ToElement()->Attribute("name"));
     auto tag = link->FirstChildElement("buoyancy");
     if(tag)
-    {
+    {      
+      const auto density = readDensity(tag);
       // old-style model: everything in buoyancy tag
-      addBuoyancy(tag, name, model.getLink(name)->inertial);
-      addHydrodynamics(tag, name);
+      addBuoyancy(tag, name, model.getLink(name)->inertial, density);
+      addHydrodynamics(tag, name, density);
     }
 
     tag = link->FirstChildElement("fluid");
     if(tag)
     {
       // new-style - in fluid
-      addBuoyancy(tag->FirstChildElement("buoyancy"), name, model.getLink(name)->inertial);
-      addHydrodynamics(tag->FirstChildElement("hydrodynamics"), name);
+      const auto density = readDensity(tag);
+      addBuoyancy(tag->FirstChildElement("buoyancy"), name,
+                  model.getLink(name)->inertial, density);
+      addHydrodynamics(tag->FirstChildElement("hydrodynamics"), name, density);
     }
   }
 }
 
 
-void HydroModelParser::addBuoyancy(const tinyxml2::XMLElement* elem, const std::string &name, const urdf::InertialSharedPtr &inertial)
+void HydroModelParser::addBuoyancy(const tinyxml2::XMLElement* elem, const std::string &name, const urdf::InertialSharedPtr &inertial, double density)
 {
   // no hydro tag or no mass -> no buoyancy (will not be simulated by Gazebo anyway)
   if(elem == nullptr)
@@ -146,19 +152,19 @@ void HydroModelParser::addBuoyancy(const tinyxml2::XMLElement* elem, const std::
   // get this link or create a new one if needed
   HydroLink &link = links[name];
 
-  for(auto node = elem->FirstChild(); node != nullptr; node = node->NextSibling())
-  {
+  for(auto node = elem->FirstChildElement(); node != nullptr; node = node->NextSiblingElement())
+  {    
     if(strcmp(node->Value(), "origin") == 0)
-      link.buoyancy_center = readVector3(node->ToElement()->Attribute("xyz"));
+      link.buoyancy_center = readVector3(node->Attribute("xyz"));
     else if(strcmp(node->Value(), "compensation") == 0)
-      link.buoyancy_force = 9.81 * inertial->mass * atof(node->ToElement()->GetText());
+      link.buoyancy_force = 9.81 * inertial->mass * atof(node->GetText()) * density;
     else if(strcmp(node->Value(), "limit") == 0)
-      link.buoyancy_limit = atof(node->ToElement()->Attribute("radius"));
+      link.buoyancy_limit = atof(node->Attribute("radius"));
   }
 }
 
 
-void HydroModelParser::addHydrodynamics(const tinyxml2::XMLElement* elem, const std::string &name)
+void HydroModelParser::addHydrodynamics(const tinyxml2::XMLElement* elem, const std::string &name, double density)
 {
   if(elem == nullptr)
     return;
@@ -168,7 +174,9 @@ void HydroModelParser::addHydrodynamics(const tinyxml2::XMLElement* elem, const 
 
   for(auto node = elem->FirstChildElement(); node != nullptr; node = node->NextSiblingElement())
   {
-    if(strcmp(node->Value(), "added_mass") == 0)
+    if(strcmp(node->Value(), "density") == 0)
+      density = atof(node->GetText());
+    else if(strcmp(node->Value(), "added_mass") == 0)
     {
       std::stringstream ss(node->GetText());
       link.added_mass.resize(6, 6);
@@ -179,7 +187,6 @@ void HydroModelParser::addHydrodynamics(const tinyxml2::XMLElement* elem, const 
           ss >> link.added_mass(i,j);
       }
     }
-
     else if(strcmp(node->Value(), "damping") == 0)
     {
       bool linear = false;
@@ -192,7 +199,7 @@ void HydroModelParser::addHydrodynamics(const tinyxml2::XMLElement* elem, const 
         {
           link.has_lin_damping = true;
           link.lin_damping.head<3>() = readVector3(node->Attribute("xyz"));
-          ROS_INFO("Found linear linear damping");
+          ROS_INFO("Found linear linear damping");          
         }
         else
         {
@@ -219,6 +226,13 @@ void HydroModelParser::addHydrodynamics(const tinyxml2::XMLElement* elem, const 
       }
     }
   }
+  // density factor
+  if(link.has_added_mass)
+    link.added_mass *= density;
+  if(link.has_lin_damping)
+    link.lin_damping *= density;
+  if(link.has_quad_damping)
+    link.quad_damping *= density;
 }
 
 Eigen::MatrixXd HydroModelParser::thrusterMap() const

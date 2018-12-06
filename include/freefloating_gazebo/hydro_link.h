@@ -37,7 +37,7 @@ public:
   }
 
   Eigen::Vector3d buoyancyForce(double surface_distance);
-  Eigen::Vector6d dynamicForce(Eigen::Vector6d &vel);
+  Eigen::Vector6d hydroDynamicForce(Eigen::Vector6d &vel);
 
   double dt;
   Butterworth_nD vel_filter;

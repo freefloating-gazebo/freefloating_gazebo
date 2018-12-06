@@ -60,6 +60,7 @@ include_directories(include ${Boost_INCLUDE_DIR}
                     ${EIGEN3_INCLUDE_DIRS})
 
 
+
 add_library(freefloating_gazebo
   include/freefloating_gazebo/butterworth.h
     include/freefloating_gazebo/hydro_link.h src/hydro_link.cpp
@@ -126,3 +127,4 @@ install(DIRECTORY include/${PROJECT_NAME}/
 install(DIRECTORY scripts
                   srv
             DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+

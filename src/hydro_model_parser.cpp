@@ -1,5 +1,6 @@
 #include <freefloating_gazebo/hydro_model_parser.h>
 #include <urdf/model.h>
+#include <Eigen/Geometry>
 
 namespace ffg
 {
@@ -35,7 +36,7 @@ void HydroModelParser::parseAll(ros::NodeHandle &nh, bool display)
         tinyxml2::XMLPrinter printer;
         plugin->Accept(&printer);
         // parse sdf
-        parseThusters(printer.CStr(), display?robot_namespace:"");
+        parseThrusters(printer.CStr(), display?robot_namespace:"");
         break;
       }
     }
@@ -44,13 +45,15 @@ void HydroModelParser::parseAll(ros::NodeHandle &nh, bool display)
 }
 
 // parse from Gazebo-passed SDF
-void HydroModelParser::parseThusters(std::string sdf_str, std::string robot_name)
+void HydroModelParser::parseThrusters(std::string sdf_str, std::string robot_name)
 {
   thrusters.clear();
 
   tinyxml2::XMLDocument doc;
   doc.Parse(sdf_str.c_str());
   auto sdf = doc.RootElement();
+
+  urdf::Model model;
 
   for(auto sdf_element = sdf->FirstChildElement("thruster"); sdf_element != nullptr; sdf_element = sdf_element->NextSiblingElement("thruster"))
   {
@@ -96,15 +99,56 @@ void HydroModelParser::parseThusters(std::string sdf_str, std::string robot_name
       auto name_info = sdf_element->FirstChildElement("name");
       if(name_info)
       {
-        // TODO check if this thruster link is actually fixed wrt base_link
-        // add this index to steering thrusters
-        thrusters.push_back({name_info->GetText(), false, max_thrust, {}});
-
-        if(robot_name != "")
-          ROS_INFO("%s: adding %s as a steering thruster", robot_name.c_str(), name_info->GetText());
+        // read URDF if needed
+        if(model.getName() == "")
+        {
+          std::string robot_description;
+          ros::NodeHandle("/" + robot_name).getParam("robot_description", robot_description);
+          model.initString(robot_description);
+        }
+        // check if fixed thruster - only if directly attached to base_link
+        if(readFixedThruster(name_info->GetText(), model, max_thrust))
+        {
+          if(robot_name != "")
+            ROS_INFO("%s: adding %s as a fixed thruster", robot_name.c_str(), name_info->GetText());
+        }
+        else
+        {
+          // add this index to steering thrusters
+          thrusters.push_back({name_info->GetText(), false, max_thrust, {}});
+          if(robot_name != "")
+            ROS_INFO("%s: adding %s as a steering thruster", robot_name.c_str(), name_info->GetText());
+        }
       }
     }
   }
+}
+
+bool HydroModelParser::readFixedThruster(std::string thruster_name, const urdf::Model &model, double max_thrust)
+{
+  // get thruster link
+  const auto link = model.getLink(thruster_name);
+  const auto joint = link->parent_joint;
+
+  if(link->getParent()->name == "base_link" && joint->type == urdf::Joint::FIXED)
+  {
+    // build map from joint pose
+    const auto pose = joint->parent_to_joint_origin_transform;
+    const Eigen::Quaterniond q(pose.rotation.w, pose.rotation.x, pose.rotation.y, pose.rotation.z);
+    // thrust direction in robot frame
+    const Eigen::Vector3d thrust = q*Eigen::Vector3d(0,0,-1);
+
+    // actually a fixed thruster - build its map
+    thrusters.push_back({thruster_name, true, max_thrust,
+                         {thrust.x(),
+                          thrust.y(),
+                          thrust.z(),
+                          pose.position.y*thrust.z() - pose.position.z*thrust.y(),
+                          pose.position.z*thrust.x() - pose.position.x*thrust.z(),
+                          pose.position.x*thrust.y() - pose.position.y*thrust.x()}});
+    return true;
+  }
+  return false;
 }
 
 void HydroModelParser::parseLinks(tinyxml2::XMLElement *root, bool display)
@@ -121,7 +165,7 @@ void HydroModelParser::parseLinks(tinyxml2::XMLElement *root, bool display)
     const std::string name(link->ToElement()->Attribute("name"));
     auto tag = link->FirstChildElement("buoyancy");
     if(tag)
-    {      
+    {
       const auto density = readDensity(tag);
       // old-style model: everything in buoyancy tag
       addBuoyancy(tag, name, model.getLink(name)->inertial, density);
@@ -153,7 +197,7 @@ void HydroModelParser::addBuoyancy(const tinyxml2::XMLElement* elem, const std::
   HydroLink &link = links[name];
 
   for(auto node = elem->FirstChildElement(); node != nullptr; node = node->NextSiblingElement())
-  {    
+  {
     if(strcmp(node->Value(), "origin") == 0)
       link.buoyancy_center = readVector3(node->Attribute("xyz"));
     else if(strcmp(node->Value(), "compensation") == 0)
@@ -199,7 +243,7 @@ void HydroModelParser::addHydrodynamics(const tinyxml2::XMLElement* elem, const 
         {
           link.has_lin_damping = true;
           link.lin_damping.head<3>() = readVector3(node->Attribute("xyz"));
-          ROS_INFO("Found linear linear damping");          
+          ROS_INFO("Found linear linear damping");
         }
         else
         {

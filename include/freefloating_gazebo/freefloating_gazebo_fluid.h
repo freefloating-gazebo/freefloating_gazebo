@@ -69,7 +69,6 @@ private:
     // plugin options
     bool has_surface_;
     ignition::math::Vector4d surface_plane_;
-    std::string description_;
 
     // general data
     ros::NodeHandle* rosnode_;

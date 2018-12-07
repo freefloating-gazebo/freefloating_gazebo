@@ -11,14 +11,16 @@ class Listener:
     def __init__(self):
         
         self.odom = Odometry()
-        self.odom_received = False
+        self.odom.pose.pose.orientation.w = 1
+        self.odom.header.frame_id = 'world'
+        self.odom.child_frame_id = 'base_link'
         self.odom_sub = rospy.Subscriber('state', Odometry, self.OdomCallBack) 
         
         self.thruster_received = False
+        self.thruster = JointState()
         self.thruster_sub = rospy.Subscriber('thruster_command', JointState, self.ThrusterCallBack)
             
     def OdomCallBack(self, msg): 
-        self.odom_received = True
         self.odom = msg
 
     def ThrusterCallBack(self, msg): 
@@ -33,8 +35,9 @@ if __name__ == '__main__':
                 
     listener = Listener()
     
-    # wait for thruster to initialize wrench dimension
-    while not rospy.is_shutdown():   
+    # wait 5 s for thruster to initialize wrench dimension
+    t = rospy.Time.now().to_sec()
+    while not rospy.is_shutdown() and rospy.Time.now().to_sec() - t < 5:
         if listener.thruster_received:
             n_th = len(listener.thruster.name)
             break
@@ -47,13 +50,11 @@ if __name__ == '__main__':
 
     T =1./50
     ratio = 1./5
-    while not rospy.is_shutdown():        
-        if listener.odom_received:            
-            t = listener.odom.pose.pose.position
-            q = listener.odom.pose.pose.orientation                        
-            br.sendTransform((t.x, t.y, t.z), (q.x,q.y,q.z,q.w), rospy.Time.now(), listener.odom.child_frame_id, listener.odom.header.frame_id)
-            br.sendTransform((t.x, t.y, t.z), (0,0,0,1), rospy.Time.now(), 'base_link_R', listener.odom.header.frame_id)
-            
+    while not rospy.is_shutdown():             
+        t = listener.odom.pose.pose.position
+        q = listener.odom.pose.pose.orientation                        
+        br.sendTransform((t.x, t.y, t.z), (q.x,q.y,q.z,q.w), rospy.Time.now(), listener.odom.child_frame_id, listener.odom.header.frame_id)
+        br.sendTransform((t.x, t.y, t.z), (0,0,0,1), rospy.Time.now(), 'base_link_R', listener.odom.header.frame_id)
             
         if listener.thruster_received:
             for i,w in enumerate(wrench):

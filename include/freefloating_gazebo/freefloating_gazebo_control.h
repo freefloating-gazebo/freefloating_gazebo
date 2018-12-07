@@ -45,7 +45,7 @@ private:
 
 private:
     // -- general data ----------------------------------------
-    std::string robot_namespace_;
+   // std::string robot_namespace_;
     ros::NodeHandle rosnode_;
     ros::CallbackQueue callback_queue_;
     physics::ModelPtr model_;

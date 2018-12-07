@@ -56,11 +56,11 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 {
   // get model and name
   model_ = _model;
-  robot_namespace_ = model_->GetName();
+  const auto robot_name = model_->GetName();
   controller_is_running_ = true;
 
   // register ROS node & time
-  rosnode_ = ros::NodeHandle(robot_namespace_);
+  rosnode_ = ros::NodeHandle(robot_name);
   ros::NodeHandle control_node(rosnode_, "controllers");
   t_prev_ = 0;
 
@@ -75,7 +75,7 @@ void FreeFloatingControlPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _
 
   // parse thruster elements
   ffg::HydroModelParser parser;
-  parser.parseThusters(_sdf->ToString(""));
+  parser.parseThrusters(_sdf->ToString(""), robot_name);
   const auto n_thr = parser.thrusterInfo(thruster_fixed,
                                             thruster_steering,
                                             thruster_use_.name,

@@ -11,6 +11,5 @@ ros::NodeHandle nh;
 ffg::HydroModelParser parser;
 parser.parseAll(nh);
 auto map = parser.thrusterMap();
-//std::cout << "Map: " << map << std::endl;
-
+std::cout << "Map: " << map << std::endl;
 }

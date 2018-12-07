@@ -25,7 +25,8 @@ public:
   HydroModelParser() {}
 
   void parseAll(ros::NodeHandle &nh, bool display = true);
-  void parseThusters(std::string sdf_str, std::string robot_name = "");
+  void parseThrusters(std::string sdf_str, std::string robot_name);
+  bool readFixedThruster(std::string thruster_name, const urdf::Model &model, double max_thrust);
   void parseLinks(ros::NodeHandle &nh, bool display = true)
   {
     std::string robot_description;

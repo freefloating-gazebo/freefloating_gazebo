@@ -50,12 +50,10 @@ void FreeFloatingFluidPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sd
   rosnode_ = new ros::NodeHandle("gazebo");
 
   // parse plugin options
-  description_ = "robot_description";
   has_surface_ = false;
   surface_plane_.Set(0,0,1,0); // default ocean surface plane is Z=0
   std::string fluid_topic = "current";
 
-  if(_sdf->HasElement("descriptionParam"))  description_ = _sdf->Get<std::string>("descriptionParam");
   if(_sdf->HasElement("surface"))
   {
     has_surface_ = true;
@@ -269,12 +267,12 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
   parsed_models_.push_back(new_model);
 
   // get link properties from robot_description to add hydro effects
-  if(!rosnode_->hasParam("/" + _model->GetName() + "/" + description_))
+  if(!rosnode_->hasParam("/" + _model->GetName() + "/robot_description"))
     return;
 
   const auto previous_link_number = buoyant_links_.size();
   std::string robot_description;
-  rosnode_->getParam("/" + _model->GetName() + "/" + description_, robot_description);
+  rosnode_->getParam("/" + _model->GetName() + "/robot_description", robot_description);
   ffg::HydroModelParser parser;
   parser.parseLinks(robot_description);
 

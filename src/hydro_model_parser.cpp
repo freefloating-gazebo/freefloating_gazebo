@@ -15,6 +15,17 @@ Eigen::Vector3d readVector3(const std::string &_string)
   return vec;
 }
 
+Eigen::Vector3d urdf2Eigen(const urdf::Vector3 &t)
+{
+  return Eigen::Vector3d(t.x, t.y, t.z);
+}
+
+Eigen::Quaterniond urdf2Eigen(const urdf::Rotation &q)
+{
+  return Eigen::Quaterniond(q.w, q.x, q.y, q.z);
+}
+
+
 void HydroModelParser::parseAll(ros::NodeHandle &nh, bool display)
 {
   std::string robot_description;
@@ -127,28 +138,41 @@ void HydroModelParser::parseThrusters(std::string sdf_str, std::string robot_nam
 bool HydroModelParser::readFixedThruster(std::string thruster_name, const urdf::Model &model, double max_thrust)
 {
   // get thruster link
-  const auto link = model.getLink(thruster_name);
-  const auto joint = link->parent_joint;
+  auto link = model.getLink(thruster_name);
 
-  if(link->getParent()->name == "base_link" && joint->type == urdf::Joint::FIXED)
+  // find transform to base_link
+  Eigen::Quaterniond q(1,0,0,0);
+  Eigen::Vector3d t(0,0,0);
+
+  while(link->name != "base_link")
   {
-    // build map from joint pose
-    const auto pose = joint->parent_to_joint_origin_transform;
-    const Eigen::Quaterniond q(pose.rotation.w, pose.rotation.x, pose.rotation.y, pose.rotation.z);
-    // thrust direction in robot frame
-    const Eigen::Vector3d thrust = q*Eigen::Vector3d(0,0,-1);
+    const auto joint = link->parent_joint;
+    link = link->getParent();
 
-    // actually a fixed thruster - build its map
-    thrusters.push_back({thruster_name, true, max_thrust,
-                         {thrust.x(),
-                          thrust.y(),
-                          thrust.z(),
-                          pose.position.y*thrust.z() - pose.position.z*thrust.y(),
-                          pose.position.z*thrust.x() - pose.position.x*thrust.z(),
-                          pose.position.x*thrust.y() - pose.position.y*thrust.x()}});
-    return true;
+    // check joint type
+    if(joint->type != urdf::Joint::FIXED)
+      return false;
+
+    // read this transform
+    const auto pose = joint->parent_to_joint_origin_transform;
+    const auto q_joint(urdf2Eigen(pose.rotation));
+    const auto t_joint(urdf2Eigen(pose.position));
+
+    // update global transform
+    q = q_joint * q;
+    t = t_joint + q_joint*t;
   }
-  return false;
+  // build full map of fixed thruster
+  // thrust direction in robot frame
+  const Eigen::Vector3d thrust = q*Eigen::Vector3d(0,0,-1);
+  thrusters.push_back({thruster_name, true, max_thrust,
+                       {thrust.x(),
+                        thrust.y(),
+                        thrust.z(),
+                        t.y()*thrust.z() - t.z()*thrust.y(),
+                        t.z()*thrust.x() - t.x()*thrust.z(),
+                        t.x()*thrust.y() - t.y()*thrust.x()}});
+  return true;
 }
 
 void HydroModelParser::parseLinks(tinyxml2::XMLElement *root, bool display)
@@ -162,30 +186,114 @@ void HydroModelParser::parseLinks(tinyxml2::XMLElement *root, bool display)
 
   for(auto link = root->FirstChildElement("link"); link != nullptr; link = link->NextSiblingElement("link"))
   {
-    const std::string name(link->ToElement()->Attribute("name"));
-    auto tag = link->FirstChildElement("buoyancy");
-    if(tag)
-    {
-      const auto density = readDensity(tag);
-      // old-style model: everything in buoyancy tag
-      addBuoyancy(tag, name, model.getLink(name)->inertial, density);
-      addHydrodynamics(tag, name, density);
-    }
-
-    tag = link->FirstChildElement("fluid");
-    if(tag)
-    {
-      // new-style - in fluid
-      const auto density = readDensity(tag);
-      addBuoyancy(tag->FirstChildElement("buoyancy"), name,
-                  model.getLink(name)->inertial, density);
-      addHydrodynamics(tag->FirstChildElement("hydrodynamics"), name, density);
-    }
+    const std::string name(link->Attribute("name"));
+    // check in URDF if root link
+    const auto parent_joint = model.getLink(name)->parent_joint;
+    if(parent_joint == nullptr || parent_joint->type != urdf::Joint::FIXED)
+      links[name] = parseLink(link, model);
   }
 }
 
 
-void HydroModelParser::addBuoyancy(const tinyxml2::XMLElement* elem, const std::string &name, const urdf::InertialSharedPtr &inertial, double density)
+HydroLink HydroModelParser::parseLink(const tinyxml2::XMLElement* elem, const urdf::Model &model, bool is_root)
+{
+  const auto name = elem->Attribute("name");
+  HydroLink link;
+
+  // write inertia part at CoG
+  const auto urdf_link = model.getLink(name);
+  if(urdf_link->inertial != nullptr)
+  {
+    link.mass = urdf_link->inertial->mass;
+    link.cog = urdf2Eigen(urdf_link->inertial->origin.position);
+    // inertia matrix written in CoG frame
+    link.inertia.block<3,3>(0,0) = link.mass * Eigen::Matrix3d::Identity();
+    link.inertia(3,3) = urdf_link->inertial->ixx;
+    link.inertia(4,4) = urdf_link->inertial->iyy;
+    link.inertia(5,5) = urdf_link->inertial->izz;
+    link.inertia(3,4) = link.inertia(4,3) = urdf_link->inertial->ixy;
+    link.inertia(3,5) = link.inertia(5,3) = urdf_link->inertial->ixz;
+    link.inertia(4,5) = link.inertia(5,4) = urdf_link->inertial->iyz;
+    // write in link frame
+    const auto q = urdf2Eigen(urdf_link->inertial->origin.rotation);
+    link.inertia.block<3,3>(3,3) = q * link.inertia.block<3,3>(3,3) * q.inverse();
+  }
+
+  auto tag = elem->FirstChildElement("buoyancy");
+  if(tag)
+  {
+    const auto density = readDensity(tag);
+    // old-style model: everything in buoyancy tag
+    addBuoyancy(link, tag, model.getLink(name)->inertial, density);
+    addHydrodynamics(link, tag, density);
+  }
+
+  tag = elem->FirstChildElement("fluid");
+  if(tag)
+  {
+    // new-style - in fluid
+    const auto density = readDensity(tag);
+    addBuoyancy(link, tag->FirstChildElement("buoyancy"),
+                urdf_link->inertial, density);
+    addHydrodynamics(link, tag->FirstChildElement("hydrodynamics"), density);
+  }
+
+  // find fixed child links
+  HydroLink sub_link;
+  for(const auto &child: model.getLink(name)->child_links)
+  {
+    if(child->parent_joint->type == urdf::Joint::FIXED)
+    {
+
+      // find corresponding element in raw XML
+      for(auto subelem = elem->Parent()->FirstChildElement("link"); subelem != nullptr;
+          subelem = subelem->NextSiblingElement("link"))
+      {
+        if(child->name.compare(subelem->Attribute("name")) == 0)
+        {
+          sub_link = parseLink(subelem, model, false);
+          break;
+        }
+      }
+      const auto pose = child->parent_joint->parent_to_joint_origin_transform;
+      const auto q = urdf2Eigen(pose.rotation);
+      const auto t = urdf2Eigen(pose.position);
+
+      // Update inertia parameters wrt new CoG in link frame
+      // write CoG of sublink in this frame
+      sub_link.cog = t + q*sub_link.cog;
+      // new CoG
+      const auto cog = (link.mass*link.cog + sub_link.mass*sub_link.cog)/
+          (link.mass + sub_link.mass);
+      // mass update
+      for(int i = 0; i < 3; ++i)
+        link.inertia(i,i) += sub_link.mass;
+      // inertia of this link wrt new CoG
+      link.inertia.block<3,3>(3,3) -= link.mass * skew(cog - link.cog) * skew(cog - link.cog);
+      // add inertia of sublink wrt new CoG
+      link.inertia.block<3,3>(3,3) += q * sub_link.inertia.block<3,3>(3,3) * q.inverse()
+          - sub_link.mass * skew(cog - sub_link.cog) * skew(cog - sub_link.cog);
+      // erase mass and CoG
+      link.mass += sub_link.mass;
+      link.cog = cog;
+
+      // TODO update buoyancy and hydrodynamics from fixed child links
+    }
+  }
+
+  if(is_root)
+  {
+    // write inertia at link origin
+    link.inertia.block<3,3>(3,3) -= - link.mass * skew(link.cog) * skew(link.cog);
+    link.inertia.block<3,3>(0,3) = -link.mass * skew(link.cog);
+    link.inertia.block<3,3>(3,0) = link.mass * skew(link.cog);
+  }
+
+  return link;
+}
+
+
+void HydroModelParser::addBuoyancy(HydroLink &link, const tinyxml2::XMLElement* elem, const urdf::InertialSharedPtr &inertial, double density)
 {
   // no hydro tag or no mass -> no buoyancy (will not be simulated by Gazebo anyway)
   if(elem == nullptr)
@@ -193,13 +301,10 @@ void HydroModelParser::addBuoyancy(const tinyxml2::XMLElement* elem, const std::
   if(inertial == nullptr)
     return;
 
-  // get this link or create a new one if needed
-  HydroLink &link = links[name];
-
   for(auto node = elem->FirstChildElement(); node != nullptr; node = node->NextSiblingElement())
   {
     if(strcmp(node->Value(), "origin") == 0)
-      link.buoyancy_center = readVector3(node->Attribute("xyz"));
+      link.cob = readVector3(node->Attribute("xyz"));
     else if(strcmp(node->Value(), "compensation") == 0)
       link.buoyancy_force = 9.81 * inertial->mass * atof(node->GetText()) * density;
     else if(strcmp(node->Value(), "limit") == 0)
@@ -208,13 +313,10 @@ void HydroModelParser::addBuoyancy(const tinyxml2::XMLElement* elem, const std::
 }
 
 
-void HydroModelParser::addHydrodynamics(const tinyxml2::XMLElement* elem, const std::string &name, double density)
+void HydroModelParser::addHydrodynamics(HydroLink &link, const tinyxml2::XMLElement* elem, double density)
 {
   if(elem == nullptr)
     return;
-
-  // get this link
-  HydroLink &link = links[name];
 
   for(auto node = elem->FirstChildElement(); node != nullptr; node = node->NextSiblingElement())
   {
@@ -360,6 +462,5 @@ std::vector<double> HydroModelParser::maxVelocity() const
   }
   return max_vel;
 }
-
 
 }

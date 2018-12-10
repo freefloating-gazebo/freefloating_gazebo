@@ -286,7 +286,7 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
     if(sdf_link != _model->GetLinks().end())
     {
       // this link is subject to buoyancy, create an instance
-      buoyant_links_.push_back({_model->GetName(), *sdf_link, eigen2Gazebo(link.second.buoyancy_center), link.second});
+      buoyant_links_.push_back({_model->GetName(), *sdf_link, eigen2Gazebo(link.second.cob), link.second});
 #ifdef GAZEBOLD
       buoyant_links_.back().hydro.initFilters(world_->GetPhysicsEngine()->GetUpdatePeriod());
 #else

@@ -70,8 +70,9 @@ protected:
       return atof(node->GetText());
     return 1;
   }
-  void addBuoyancy(const tinyxml2::XMLElement* elem, const std::string &name, const urdf::InertialSharedPtr &inertial, double density);
-  void addHydrodynamics(const tinyxml2::XMLElement* elem, const std::string &name, double density);
+  HydroLink parseLink(const tinyxml2::XMLElement* elem, const urdf::Model &model, bool is_root = true);
+  void addBuoyancy(HydroLink &link, const tinyxml2::XMLElement* elem, const urdf::InertialSharedPtr &inertial, double density);
+  void addHydrodynamics(HydroLink &link, const tinyxml2::XMLElement* elem, double density);
 
 };
 

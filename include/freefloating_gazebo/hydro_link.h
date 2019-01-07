@@ -17,7 +17,6 @@ namespace ffg
 
 Eigen::Matrix3d skew(const Eigen::Vector3d &v);
 
-
 class HydroLink
 {
 public:
@@ -41,7 +40,6 @@ public:
   Eigen::Vector3d buoyancyForce(double surface_distance);
   Eigen::Vector6d hydroDynamicForce(Eigen::Vector6d &vel);
 
-  std::string name;
   Eigen::Vector3d cob, cog;
   Eigen::Vector6d vel_prev;
   double buoyancy_force = 0, buoyancy_limit = 0, mass = 0;

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(freefloating_gazebo)
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 
 find_package(gazebo)
 
@@ -143,5 +143,6 @@ install(DIRECTORY include/${PROJECT_NAME}/
 
 install(DIRECTORY scripts
                   srv
+                  gui
             DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 

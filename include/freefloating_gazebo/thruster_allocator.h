@@ -17,7 +17,7 @@ public:
   // parse raw param to get thruster max force and map
   ThrusterAllocator(ros::NodeHandle &nh);
 
-  std::vector<std::string> initControl(ros::NodeHandle &nh);
+  std::vector<std::string> initControl(ros::NodeHandle &nh, double map_threshold = 1e-2);
   bool has_thrusters() const {return names.size();}
 
   geometry_msgs::Wrench maxWrench() const

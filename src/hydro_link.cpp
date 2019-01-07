@@ -49,13 +49,12 @@ Eigen::Vector6d HydroLink::hydroDynamicForce(Eigen::Vector6d &vel)
     // added Coriolis
     Eigen::Matrix6d Cor;
     const Eigen::Vector6d A = added_mass * vel;
-    Eigen::Matrix3d Sa = -1 * skew(A.head<3>());
+    const Eigen::Matrix3d Sa = -1 * skew(A.head<3>());
     Cor << Eigen::Matrix3d::Zero(), Sa, Sa, skew(-A.tail<3>());
     force -= Cor * vel;
 
     vel_prev = vel;
   }
-
   return force;
 }
 

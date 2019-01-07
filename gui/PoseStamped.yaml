@@ -1,0 +1,27 @@
+body_position_setpoint:
+    type: geometry_msgs/PoseStamped
+    header.frame_id: world
+    x: 
+        min: -10
+        max: 10
+        to: pose.position.x
+    y: 
+        min: -10
+        max: 10
+        to: pose.position.y
+    z: 
+        min: -10
+        max: 0
+        to: pose.position.z
+    roll: 
+        min: -pi
+        max: pi
+        to: pose.orientation.roll
+    pitch: 
+        min: -pi
+        max: pi
+        to: pose.orientation.pitch
+    yaw: 
+        min: -pi
+        max: pi
+        to: pose.orientation.yaw

@@ -18,7 +18,7 @@ ThrusterAllocator::ThrusterAllocator(ros::NodeHandle &nh)
   map = parser.thrusterMap();
 }
 
-std::vector<std::string> ThrusterAllocator::initControl(ros::NodeHandle &nh)
+std::vector<std::string> ThrusterAllocator::initControl(ros::NodeHandle &nh, double map_threshold)
 {
   std::vector<std::string> controlled_axes;
   const std::vector<std::string> axes{"x", "y", "z", "roll", "pitch", "yaw"};
@@ -42,14 +42,24 @@ std::vector<std::string> ThrusterAllocator::initControl(ros::NodeHandle &nh)
     }
   }
 
+  // threshold on map before pseudo-inverse
+  for(int r = 0; r < 6; ++r)
+  {
+    for(int c = 0; c < map.cols(); ++c)
+    {
+      if(std::abs(map(r,c)) < map_threshold)
+        map(r,c) = 0;
+    }
+  }
+
   inverse_map.resize(map.cols(), map.rows());
   Eigen::JacobiSVD<Eigen::MatrixXd> svd_M(map, Eigen::ComputeThinU | Eigen::ComputeThinV);
-  Eigen::VectorXd dummy_in;
+  Eigen::VectorXd dummy_in(map.rows());
   Eigen::VectorXd dummy_out(map.cols());
   unsigned int i,j;
   for(i=0;i<map.rows();++i)
   {
-    dummy_in = Eigen::VectorXd::Zero(map.rows());
+    dummy_in.setZero();
     dummy_in(i) = 1;
     dummy_out = svd_M.solve(dummy_in);
     for(j = 0; j<map.cols();++j)

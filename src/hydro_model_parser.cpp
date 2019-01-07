@@ -5,7 +5,6 @@
 namespace ffg
 {
 
-
 Eigen::Vector3d readVector3(const std::string &_string)
 {
   Eigen::Vector3d vec;
@@ -28,6 +27,7 @@ Eigen::Quaterniond urdf2Eigen(const urdf::Rotation &q)
 
 void HydroModelParser::parseAll(ros::NodeHandle &nh, bool display)
 {
+  std::cout << "Parsing hydro model from namespace " << nh.getNamespace() << std::endl;
   std::string robot_description;
   nh.getParam("robot_description", robot_description);
   tinyxml2::XMLDocument doc;
@@ -222,8 +222,11 @@ HydroLink HydroModelParser::parseLink(const tinyxml2::XMLElement* elem, const ur
   auto tag = elem->FirstChildElement("buoyancy");
   if(tag)
   {
-    const auto density = readDensity(tag);
     // old-style model: everything in buoyancy tag
+    const auto density = readDensity(tag);    
+    const auto node = tag->FirstChildElement("origin");
+    if(node)
+      link.cob = readVector3(node->Attribute("xyz"));
     addBuoyancy(link, tag, model.getLink(name)->inertial, density);
     addHydrodynamics(link, tag, density);
   }
@@ -233,6 +236,10 @@ HydroLink HydroModelParser::parseLink(const tinyxml2::XMLElement* elem, const ur
   {
     // new-style - in fluid
     const auto density = readDensity(tag);
+    const auto node = tag->FirstChildElement("origin");
+    if(node)
+      link.cob = readVector3(node->Attribute("xyz"));
+
     addBuoyancy(link, tag->FirstChildElement("buoyancy"),
                 urdf_link->inertial, density);
     addHydrodynamics(link, tag->FirstChildElement("hydrodynamics"), density);
@@ -287,8 +294,11 @@ HydroLink HydroModelParser::parseLink(const tinyxml2::XMLElement* elem, const ur
     link.inertia.block<3,3>(3,3) -= - link.mass * skew(link.cog) * skew(link.cog);
     link.inertia.block<3,3>(0,3) = -link.mass * skew(link.cog);
     link.inertia.block<3,3>(3,0) = link.mass * skew(link.cog);
-  }
 
+    // TODO write hydrodynamics at link origin (written at CoB)
+
+
+  }
   return link;
 }
 
@@ -303,9 +313,7 @@ void HydroModelParser::addBuoyancy(HydroLink &link, const tinyxml2::XMLElement* 
 
   for(auto node = elem->FirstChildElement(); node != nullptr; node = node->NextSiblingElement())
   {
-    if(strcmp(node->Value(), "origin") == 0)
-      link.cob = readVector3(node->Attribute("xyz"));
-    else if(strcmp(node->Value(), "compensation") == 0)
+    if(strcmp(node->Value(), "compensation") == 0)
       link.buoyancy_force = 9.81 * inertial->mass * atof(node->GetText()) * density;
     else if(strcmp(node->Value(), "limit") == 0)
       link.buoyancy_limit = atof(node->Attribute("radius"));
@@ -320,9 +328,7 @@ void HydroModelParser::addHydrodynamics(HydroLink &link, const tinyxml2::XMLElem
 
   for(auto node = elem->FirstChildElement(); node != nullptr; node = node->NextSiblingElement())
   {
-    if(strcmp(node->Value(), "density") == 0)
-      density = atof(node->GetText());
-    else if(strcmp(node->Value(), "added_mass") == 0)
+    if(strcmp(node->Value(), "added_mass") == 0)
     {
       std::stringstream ss(node->GetText());
       link.added_mass.resize(6, 6);
@@ -406,8 +412,7 @@ uint HydroModelParser::thrusterInfo(std::vector<uint> &thruster_fixed,
                                     std::vector<std::string> &thruster_names,
                                     std::vector<double> &thruster_max) const
 {
-  const uint n = thrusters.size();
-  thruster_fixed.reserve(n);
+  const uint n =  static_cast<uint>(thrusters.size());
   thruster_fixed.reserve(n);
   thruster_steering.reserve(n);
   thruster_names.reserve(n);
@@ -443,8 +448,8 @@ std::vector<double> HydroModelParser::maxWrench() const
 std::vector<double> HydroModelParser::maxVelocity() const
 {
   const auto wrench = maxWrench();
-  std::vector<double> max_vel(6);
-  const auto &base_link = links.find("base_link")->second;
+  std::vector<double> max_vel(6,0);
+  const auto &base_link = links.at("base_link");
   for(uint axis = 0; axis < 6; ++axis)
   {
     const double lin = base_link.has_lin_damping?base_link.lin_damping[axis]:0;
@@ -457,8 +462,6 @@ std::vector<double> HydroModelParser::maxVelocity() const
     }
     else if(lin > 1e-6)
       max_vel[axis] = wrench[axis] / lin;
-    else
-      max_vel[axis] = 0;
   }
   return max_vel;
 }

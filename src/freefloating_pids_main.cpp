@@ -40,7 +40,7 @@ int main(int argc, char ** argv)
     if(priv.hasParam("body_control"))
       priv.getParam("body_control", default_mode);
 
-    const auto controlled_axes = allocator.initControl(nh);
+    const auto controlled_axes = allocator.initControl(nh, 0.07);
     body_pid = std::unique_ptr<FreeFloatingBodyPids>(new FreeFloatingBodyPids);
     body_pid->Init(nh, dt, controlled_axes, default_mode);
 

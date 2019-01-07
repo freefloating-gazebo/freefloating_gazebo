@@ -1,0 +1,32 @@
+thruster_command:
+    type: sensor_msgs/JointState
+    thr1:
+        min: -30
+        max: 30
+        to: effort[0]
+    thr2:
+        min: -30
+        max: 30
+        to: effort[1]
+    thr3:
+        min: -30
+        max: 30
+        to: effort[2]
+    thr4:
+        min: -30
+        max: 30
+        to: effort[3]
+    thr5:
+        min: -30
+        max: 30
+        to: effort[4]
+    thr6:
+        min: -30
+        max: 30
+        to: effort[5]
+    name[0]: 'thr1'
+    name[1]: 'thr2'
+    name[2]: 'thr3'
+    name[3]: 'thr4'
+    name[4]: 'thr5'
+    name[5]: 'thr6'

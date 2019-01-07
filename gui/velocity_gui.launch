@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>   
+        <!-- Load gui -->
+        <node name="velocity_gui" pkg="slider_publisher" type="slider_publisher" output="screen" respawn="true"">
+        <param name="file" value="$(find freefloating_gazebo)/gui/Velocity.yaml"/>
+        </node> 
+</launch>

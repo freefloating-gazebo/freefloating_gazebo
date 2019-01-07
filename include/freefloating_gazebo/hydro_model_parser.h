@@ -21,6 +21,8 @@ class HydroModelParser
     std::vector<double> map;
   };
 
+
+
 public:
   HydroModelParser() {}
 
@@ -41,6 +43,7 @@ public:
   }
   void parseLinks(tinyxml2::XMLElement *root, bool display = true);
 
+  HydroLink getLink(std::string name) const {return links.at(name);}
   std::map<std::string, HydroLink> getLinks() const {return links;}
   std::vector<Thruster> getThrusters() const {return thrusters;}
   Eigen::MatrixXd thrusterMap() const;
@@ -70,6 +73,7 @@ protected:
       return atof(node->GetText());
     return 1;
   }
+
   HydroLink parseLink(const tinyxml2::XMLElement* elem, const urdf::Model &model, bool is_root = true);
   void addBuoyancy(HydroLink &link, const tinyxml2::XMLElement* elem, const urdf::InertialSharedPtr &inertial, double density);
   void addHydrodynamics(HydroLink &link, const tinyxml2::XMLElement* elem, double density);

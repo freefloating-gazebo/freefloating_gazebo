@@ -77,6 +77,16 @@ void ThrusterAllocator::saturate(Eigen::VectorXd &_command) const
     _command *= 1./norm_ratio;
 }
 
+void ThrusterAllocator::AddHydroDynToWrench(Eigen::VectorXd &wrench, const Eigen::Vector3d velocity_lin_measure_, const Eigen::Vector3d velocity_ang_measure_)
+{
+  Eigen::Vector6d velocity_screw;
+  velocity_screw << velocity_lin_measure_, velocity_ang_measure_;
+  ROS_INFO("velocity screw = %.01f, %.01f, %.01f, Original Wrench", velocity_screw(0), velocity_screw(1), velocity_screw(2));
+  ROS_INFO("Original wrench = %.01f, %.01f, %.01f, %.01f, %.01f, %.01f", wrench(0), wrench(1), wrench(2),wrench(3),wrench(4),wrench(5));
+  wrench = wrench - base_link.hydroDynamicForce(velocity_screw);
+  ROS_INFO("New wrench = %.01f, %.01f, %.01f, %.01f, %.01f, %.01f", wrench(0), wrench(1), wrench(2),wrench(3),wrench(4),wrench(5));
+  return;
+}
 
 sensor_msgs::JointState ThrusterAllocator::wrench2Thrusters(const geometry_msgs::Wrench &cmd) const
 {
@@ -95,7 +105,7 @@ sensor_msgs::JointState ThrusterAllocator::wrench2Thrusters(const geometry_msgs:
     return msg;
 }
 
-sensor_msgs::JointState ThrusterAllocator::wrench2Thrusters(const geometry_msgs::Wrench &cmd,const Eigen::Quaterniond &invOrientation) const
+sensor_msgs::JointState ThrusterAllocator::wrench2Thrusters(const geometry_msgs::Wrench &cmd, const Eigen::Quaterniond &invOrientation, const Eigen::Vector3d velocity_lin_measure_, const Eigen::Vector3d velocity_ang_measure_)
 {
     //Desired wrench to be applied
     Eigen::VectorXd wrenchd(6);
@@ -121,6 +131,9 @@ sensor_msgs::JointState ThrusterAllocator::wrench2Thrusters(const geometry_msgs:
 
     ROS_INFO("Static Wrench %.01f, %.01f, %.01f; %.01f, %.01f, %.01f", static_wrench[0], static_wrench[1], static_wrench[2], static_wrench[3], static_wrench[4], static_wrench[5]);
 
+
+    //Now we add the hydrodynamic forces
+    AddHydroDynToWrench(corrected_wrench, velocity_lin_measure_,velocity_ang_measure_);
     geometry_msgs::Wrench corrected_cmd;
     tf::wrenchEigenToMsg(corrected_wrench,corrected_cmd);
 

@@ -76,7 +76,7 @@ int main(int argc, char ** argv)
   {
     // update body and publish
     if(control_body && body_pid->UpdatePID())
-        body_command_publisher.publish(allocator.wrench2Thrusters(body_pid->WrenchCommand(),body_pid->getInvOrientation()));
+        body_command_publisher.publish(allocator.wrench2Thrusters(body_pid->WrenchCommand(),body_pid->getInvOrientation(),body_pid->GetVelocityLin(),body_pid->GetVelocityAng()));
 
 
     // update joints and publish

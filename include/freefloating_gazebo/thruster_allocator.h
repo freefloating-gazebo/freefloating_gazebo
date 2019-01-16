@@ -36,8 +36,9 @@ public:
 
   void saturate(Eigen::VectorXd &_command) const;
 
-  sensor_msgs::JointState wrench2Thrusters(const geometry_msgs::Wrench  & cmd) const;
-  sensor_msgs::JointState wrench2Thrusters(const geometry_msgs::Wrench &cmd,const Eigen::Quaterniond &invOrientation) const;
+  void AddHydroDynToWrench(Eigen::VectorXd &wrench, const Eigen::Vector3d velocity_lin_measure_, const Eigen::Vector3d velocity_ang_measure_);
+  sensor_msgs::JointState wrench2Thrusters(const geometry_msgs::Wrench &cmd) const;
+  sensor_msgs::JointState wrench2Thrusters(const geometry_msgs::Wrench &cmd,const Eigen::Quaterniond &invOrientation, const Eigen::Vector3d velocity_lin_measure_, const Eigen::Vector3d velocity_ang_measure_);
 
   ffg::HydroLink base_link;
   std::vector<uint> steer_idx, fixed_idx;

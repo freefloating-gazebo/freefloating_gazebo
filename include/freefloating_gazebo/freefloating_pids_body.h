@@ -41,6 +41,12 @@ public:
     //get orientation
     inline Eigen::Quaterniond getInvOrientation() {return pose_ang_measure_inv_;}
 
+    // get velocity_lin_measure_
+    Eigen::Vector3d GetVelocityLin(){return velocity_lin_measure_;}
+
+    // get velocity_ang_measure_
+    Eigen::Vector3d GetVelocityAng(){return velocity_ang_measure_;}
+
 private:
 
     ros::Subscriber position_sp_subscriber, velocity_sp_subscriber,

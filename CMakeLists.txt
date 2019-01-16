@@ -18,6 +18,7 @@ if(gazebo_FOUND)
     rostime
     nav_msgs
     message_generation
+    eigen_conversions
     )
 else()
 find_package(catkin REQUIRED COMPONENTS
@@ -31,6 +32,7 @@ find_package(catkin REQUIRED COMPONENTS
   rostime
   nav_msgs
   message_generation
+  eigen_conversions
 )
 endif()
 

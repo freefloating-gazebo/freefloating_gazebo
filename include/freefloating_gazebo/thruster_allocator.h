@@ -3,6 +3,8 @@
 
 #include <Eigen/Core>
 #include <Eigen/SVD>
+#include <eigen3/Eigen/Geometry>
+#include <eigen_conversions/eigen_msg.h>
 #include <ros/ros.h>
 #include <geometry_msgs/Wrench.h>
 #include <sensor_msgs/JointState.h>
@@ -35,6 +37,7 @@ public:
   void saturate(Eigen::VectorXd &_command) const;
 
   sensor_msgs::JointState wrench2Thrusters(const geometry_msgs::Wrench  & cmd) const;
+  sensor_msgs::JointState wrench2Thrusters(const geometry_msgs::Wrench &cmd,const Eigen::Quaterniond &invOrientation) const;
 
   ffg::HydroLink base_link;
   std::vector<uint> steer_idx, fixed_idx;

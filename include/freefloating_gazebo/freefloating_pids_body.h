@@ -38,6 +38,9 @@ public:
     // get wrench command
     inline geometry_msgs::Wrench WrenchCommand() {return wrench_command_;}
 
+    //get orientation
+    inline Eigen::Quaterniond getInvOrientation() {return pose_ang_measure_inv_;}
+
 private:
 
     ros::Subscriber position_sp_subscriber, velocity_sp_subscriber,

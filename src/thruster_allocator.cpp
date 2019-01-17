@@ -120,7 +120,7 @@ sensor_msgs::JointState ThrusterAllocator::wrench2Thrusters(const geometry_msgs:
     //Here, we assume the buoyance force was updated somewhere, TODO add this to the loop or add condition on depth;
     double B = base_link.buoyancy_force;
     double W = base_link.mass*9.81;
-    ROS_INFO("Buoyancy =  %.02f, Weight = %.02f, mass = %.01f", B, W,base_link.mass);
+    //ROS_INFO("Buoyancy =  %.02f, Weight = %.02f, mass = %.01f", B, W,base_link.mass);
 
     Eigen::VectorXd static_wrench(6);
     static_wrench << (W-B)*sin(theta), -(W-B)*cos(theta)*sin(psi), -(W-B)*cos(theta)*cos(psi),
@@ -129,7 +129,8 @@ sensor_msgs::JointState ThrusterAllocator::wrench2Thrusters(const geometry_msgs:
     Eigen::VectorXd corrected_wrench(6);
     corrected_wrench = wrenchd - static_wrench;
 
-    ROS_INFO("Static Wrench %.01f, %.01f, %.01f; %.01f, %.01f, %.01f", static_wrench[0], static_wrench[1], static_wrench[2], static_wrench[3], static_wrench[4], static_wrench[5]);
+    //ROS_INFO("COG =  %.02f , %.02f, %.02f", base_link.cog[0], base_link.cog[1], base_link.cog[2]);
+    //ROS_INFO("Static Wrench %.01f, %.01f, %.01f; %.01f, %.01f, %.01f", static_wrench[0], static_wrench[1], static_wrench[2], static_wrench[3], static_wrench[4], static_wrench[5]);
 
 
     //Now we add the hydrodynamic forces

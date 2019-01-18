@@ -81,10 +81,10 @@ void ThrusterAllocator::AddHydroDynToWrench(Eigen::VectorXd &wrench, const Eigen
 {
   Eigen::Vector6d velocity_screw;
   velocity_screw << velocity_lin_measure_, velocity_ang_measure_;
-  ROS_INFO("velocity screw = %.01f, %.01f, %.01f, Original Wrench", velocity_screw(0), velocity_screw(1), velocity_screw(2));
+  ROS_INFO("velocity screw = %.01f, %.01f, %.01f", velocity_screw(0), velocity_screw(1), velocity_screw(2));
   ROS_INFO("Original wrench = %.01f, %.01f, %.01f, %.01f, %.01f, %.01f", wrench(0), wrench(1), wrench(2),wrench(3),wrench(4),wrench(5));
   wrench = wrench - base_link.hydroDynamicForce(velocity_screw);
-  ROS_INFO("New wrench = %.01f, %.01f, %.01f, %.01f, %.01f, %.01f", wrench(0), wrench(1), wrench(2),wrench(3),wrench(4),wrench(5));
+  ROS_INFO("New wrench      = %.01f, %.01f, %.01f, %.01f, %.01f, %.01f", wrench(0), wrench(1), wrench(2),wrench(3),wrench(4),wrench(5));
   return;
 }
 
@@ -124,7 +124,7 @@ sensor_msgs::JointState ThrusterAllocator::wrench2Thrusters(const geometry_msgs:
 
     Eigen::VectorXd static_wrench(6);
     static_wrench << (W-B)*sin(theta), -(W-B)*cos(theta)*sin(psi), -(W-B)*cos(theta)*cos(psi),
-            -base_link.cog[2]*cos(theta)*sin(psi), -base_link.cog[2]*sin(theta), 0;
+            -base_link.cog[2]*B*cos(theta)*sin(psi), -base_link.cog[2]*B*sin(theta), 0;
 
     Eigen::VectorXd corrected_wrench(6);
     corrected_wrench = wrenchd - static_wrench;

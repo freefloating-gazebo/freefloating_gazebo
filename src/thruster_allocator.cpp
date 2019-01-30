@@ -81,10 +81,7 @@ void ThrusterAllocator::AddHydroDynToWrench(Eigen::VectorXd &wrench, const Eigen
 {
   Eigen::Vector6d velocity_screw;
   velocity_screw << velocity_lin_measure_, velocity_ang_measure_;
-  ROS_INFO("velocity screw = %.01f, %.01f, %.01f", velocity_screw(0), velocity_screw(1), velocity_screw(2));
-  ROS_INFO("Original wrench = %.01f, %.01f, %.01f, %.01f, %.01f, %.01f", wrench(0), wrench(1), wrench(2),wrench(3),wrench(4),wrench(5));
   wrench = wrench - base_link.hydroDynamicForce(velocity_screw);
-  ROS_INFO("New wrench      = %.01f, %.01f, %.01f, %.01f, %.01f, %.01f", wrench(0), wrench(1), wrench(2),wrench(3),wrench(4),wrench(5));
   return;
 }
 

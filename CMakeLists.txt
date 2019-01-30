@@ -88,7 +88,6 @@ add_library(freefloating_gazebo
 target_link_libraries(freefloating_gazebo ${catkin_LIBRARIES})
 
 
-
 # node to perform PID control for body (thrusters) and joints
 add_executable(pid_control src/freefloating_pids_main.cpp
     include/freefloating_gazebo/butterworth.h
@@ -98,6 +97,14 @@ add_executable(pid_control src/freefloating_pids_main.cpp
 target_link_libraries(pid_control ${catkin_LIBRARIES} ${PROJECT_NAME})
 add_dependencies(pid_control ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_dependencies(pid_control freefloating_gazebo_gencpp)
+
+add_executable(model_control src/model_control_main.cpp
+	src/model_control_compute.cpp include/freefloating_gazebo/model_control_compute.h)
+target_link_libraries(model_control ${catkin_LIBRARIES} ${PROJECT_NAME})
+add_dependencies(model_control ${${PROJECT_NAME}_EXPORTED_TARGETS})
+add_dependencies(model_control freefloating_gazebo_gencpp)	
+	
+
 
 
 if(gazebo_FOUND)

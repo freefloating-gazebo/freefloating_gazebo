@@ -4,6 +4,114 @@
 namespace ffg
 {
 
+void ModelControlCompute::Init(ros::NodeHandle &nh, ros::Duration&_dt, const std::vector<std::string>&_controlled_axes, std::string default_mode = "position")
+{
+
+    // init dt from rate
+    dt = _dt;
+
+    /*
+
+    // wrench setpoint
+    wrench_sp_subscriber =
+        nh.subscribe("body_wrench_setpoint", 1, &FreeFloatingBodyPids::WrenchSPCallBack, this);
+    // measure
+    state_subscriber =
+        nh.subscribe("state", 1, &FreeFloatingBodyPids::MeasureCallBack, this);
+
+    // deal with controlled axes
+    const size_t n = _controlled_axes.size();
+    axes.resize(n);
+
+    const std::vector<std::string> axes3D{"x", "y", "z", "roll", "pitch", "yaw"};
+
+    // get whether or not we use dynamic reconfigure
+    bool use_dynamic_reconfig;
+    ros::NodeHandle control_node(nh, "controllers");
+    control_node.param("controllers/config/body/dynamic_reconfigure", use_dynamic_reconfig, true);
+
+    if(n)
+    {
+      // position setpoint
+      position_sp_subscriber =
+          nh.subscribe("body_position_setpoint", 1, &FreeFloatingBodyPids::PositionSPCallBack, this);
+      // velocity setpoint
+      velocity_sp_subscriber =
+          nh.subscribe("body_velocity_setpoint", 1, &FreeFloatingBodyPids::VelocitySPCallBack, this);
+    }
+
+    for(unsigned int i=0;i<n;++i)
+    {
+      const auto idx = static_cast<size_t>(std::distance(axes3D.begin(),
+                                                         std::find(axes3D.begin(),
+                                                                   axes3D.end(),
+                                                                   _controlled_axes[i])));
+      auto axis = &axes[i];
+      axis->name = _controlled_axes[i];
+      // here we have the controlled axis
+      switch(idx)
+      {
+      case 0:
+        axis->position.error = &(pose_lin_error_.x());
+        axis->velocity.error = &(velocity_lin_error_.x());
+        axis->position.command = axis->velocity.command = &(wrench_command_.force.x);
+        break;
+      case 1:
+        axis->position.error = &(pose_lin_error_.y());
+        axis->velocity.error = &(velocity_lin_error_.y());
+        axis->position.command = axis->velocity.command = &(wrench_command_.force.y);
+        break;
+      case 2:
+        axis->position.error = &(pose_lin_error_.z());
+        axis->velocity.error = &(velocity_lin_error_.z());
+        axis->position.command = axis->velocity.command = &(wrench_command_.force.z);
+        break;
+      case 3:
+        axis->position.error = &(pose_ang_error_.x());
+        axis->velocity.error = &(velocity_ang_error_.x());
+        axis->position.command = axis->velocity.command = &(wrench_command_.torque.x);
+        break;
+      case 4:
+        axis->position.error = &(pose_ang_error_.y());
+        axis->velocity.error = &(velocity_ang_error_.y());
+        axis->position.command = axis->velocity.command = &(wrench_command_.torque.y);
+        break;
+      case 5:
+        axis->position.error = &(pose_ang_error_.z());
+        axis->velocity.error = &(velocity_ang_error_.z());
+        axis->position.command = axis->velocity.command = &(wrench_command_.torque.z);
+        break;
+      }
+      InitPID(axis->position.pid, ros::NodeHandle(control_node, axis->name + "/position"), use_dynamic_reconfig);
+      InitPID(axis->velocity.pid, ros::NodeHandle(control_node, axis->name + "/velocity"), use_dynamic_reconfig);
+    }
+
+    // default control = position
+    CTreq req;
+    CTres res;
+    if(n)
+      ToPositionControl(req, res);
+    else
+      ToEffortControl(req, res);
+    if(default_mode == "velocity")
+    {
+      ToVelocityControl(req, res);
+    }
+    else if(default_mode == "depth")
+    {
+      req.axes = {"x", "y", "yaw"};
+      ToVelocityControl(req, res);
+    }
+    else if(default_mode == "effort")
+    {
+      req.axes = {"x", "y", "z", "yaw"};
+      ToEffortControl(req, res);
+    }
+    initSwitchServices(control_node, "body");
+
+    */
+}
+
 void ModelControlCompute::UpdateError()
 {
 

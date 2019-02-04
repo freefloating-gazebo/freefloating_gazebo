@@ -36,10 +36,12 @@ public:
         regressor.setZero();
     }
 
-    // get wrench command
-    inline geometry_msgs::Wrench WrenchCommand() {return wrench_command_;}
+    void Init(ros::NodeHandle &nh,
+              ros::Duration&_dt,
+              const std::vector<std::string>&_controlled_axes,
+              std::string default_mode = "position");
 
-    bool ModelCompute(){
+    bool Update(){
         UpdateError();
         UpdateParam();
         UpdateWrench();
@@ -48,6 +50,9 @@ public:
     void UpdateError();
     void UpdateParam();
     void UpdateWrench();
+
+    // get wrench command
+    inline geometry_msgs::Wrench WrenchCommand() {return wrench_command_;}
 
     // errors are stored in Vector3
     Eigen::Vector6d pose_error_, velocity_error_, s_error_;

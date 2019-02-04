@@ -27,7 +27,7 @@ int main(int argc, char ** argv)
 
     ros::SubscribeOptions ops;
 
-    // -- Init body -------------------------------------------
+    // -- Init body --------------------------
     // Model-Control class
     std::unique_ptr<ffg::ModelControlCompute> body_controller;
     ros::Publisher body_command_publisher;
@@ -60,8 +60,8 @@ int main(int argc, char ** argv)
     while(ros::ok())
     {
         // update body and publish
-        if(control_body && body_controller->ModelCompute())
-            body_command_publisher.publish(allocator.wrench2Thrusters(body_controller->WrenchCommand()));
+        if(control_body && body_controller->Update())
+            body_command_publisher.publish(allocator.wrench2Thrusters(body_controller->WrenchCommand()));//Write fonction for Control Compute
 
 
         // // update joints and publish

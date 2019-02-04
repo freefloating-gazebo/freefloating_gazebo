@@ -94,7 +94,7 @@ void FreeFloatingFluidPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sd
 
 void FreeFloatingFluidPlugin::Update()
 {
-  // activate callbacks
+  // activate callbacksinitFilters
   callback_queue_.callAvailable();
 
   // look for new world models

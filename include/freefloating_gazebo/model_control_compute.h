@@ -4,6 +4,7 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Geometry>
 #include <geometry_msgs/WrenchStamped.h>
+#include <eigen_conversions/eigen_msg.h>
 
 namespace Eigen
 {
@@ -38,26 +39,26 @@ public:
     // get wrench command
     inline geometry_msgs::Wrench WrenchCommand() {return wrench_command_;}
 
-    void ModelCompute(){
+    bool ModelCompute(){
         UpdateError();
-        UpdateWrench();
         UpdateParam();
+        UpdateWrench();
     };
 
     void UpdateError();
-    void UpdateWrench();
     void UpdateParam();
+    void UpdateWrench();
 
     // errors are stored in Vector3
     Eigen::Vector6d pose_error_, velocity_error_, s_error_;
     // velocities are stored in Vector 6
-    Eigen::Vector6d velocity_setpoint_, velocity_measure_;
+    Eigen::Vector6d velocity_setpoint_, velocity_measure_, vel_prev;
     // poses are stored in Vector3 and Quaternion
     Eigen::Vector3d pose_lin_setpoint_, pose_lin_measure_;
     Eigen::Quaterniond pose_ang_setpoint_, pose_ang_measure_inv_;
 
     // parameters are stored in VectorXd
-    Eigen::VectorModel22 param_estimated;
+    Eigen::VectorModel22 param_estimated, param_prev;
 
     // gains of the model
     double lp, lo, kp, ko;
@@ -66,6 +67,10 @@ public:
 
     // the regressor matrix
     Eigen::MatrixModel22 regressor;
+
+    // time between two updates
+    double dt;
+
 private:
     // wrench command
     geometry_msgs::Wrench wrench_command_;

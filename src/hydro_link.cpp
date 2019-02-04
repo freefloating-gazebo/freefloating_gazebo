@@ -4,7 +4,6 @@
 namespace ffg
 {
 
-
 Eigen::Matrix3d skew(const Eigen::Vector3d &v)
 {
   Eigen::Matrix3d out;

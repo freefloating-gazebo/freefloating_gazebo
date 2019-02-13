@@ -43,6 +43,8 @@ int main(int argc, char ** argv)
         const auto controlled_axes = allocator.initControl(nh, 0.07);
 
         body_controller = std::unique_ptr<ffg::ModelControlCompute>(new ffg::ModelControlCompute());
+	body_controller->Init(nh,dt,controlled_axes,default_mode);	
+        //init Controller. Since calling the object does nothing but set all values to 0
         //std::make_unique<ffg::ModelControlCompute>(); not supported in this c++ version
         //body_controller->Init(nh, dt, controlled_axes, default_mode); It was needed before, now we do it when we assign the pointer
         //body_pid->Init(nh, dt, controlled_axes, default_mode);
@@ -61,7 +63,7 @@ int main(int argc, char ** argv)
     {
         // update body and publish
         if(control_body && body_controller->Update())
-            body_command_publisher.publish(allocator.wrench2Thrusters(body_controller->WrenchCommand()));//Write fonction for Control Compute
+            body_command_publisher.publish(allocator.wrench2Thrusters(body_controller->WrenchCommand()));//TODO : Write fonction for Control Compute
 
 
         // // update joints and publish

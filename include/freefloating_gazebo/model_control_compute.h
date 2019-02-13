@@ -1,6 +1,7 @@
 #ifndef MODEL_CONTROL_COMPUTE_H
 #define MODEL_CONTROL_COMPUTE_H
 
+#include <ros/ros.h>
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Geometry>
 #include <geometry_msgs/WrenchStamped.h>

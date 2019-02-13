@@ -12,7 +12,7 @@ int main(int argc, char ** argv)
     // init ROS node
     ros::init(argc, argv, "freefloating_model_control");
     ros::NodeHandle nh;
-    ros::NodeHandle control_node(nh, "controllers");//Was used whaen we needed to Init Joints
+    ros::NodeHandle control_node(nh, "controllers");//Was used when we needed to Init Joints
     ros::NodeHandle priv("~");
 
     ffg::ThrusterAllocator allocator(nh);
@@ -43,7 +43,7 @@ int main(int argc, char ** argv)
         const auto controlled_axes = allocator.initControl(nh, 0.07);
 
         body_controller = std::unique_ptr<ffg::ModelControlCompute>(new ffg::ModelControlCompute());
-        //std::make_unique<ffg::ModelControlCompute>();
+        //std::make_unique<ffg::ModelControlCompute>(); not supported in this c++ version
         //body_controller->Init(nh, dt, controlled_axes, default_mode); It was needed before, now we do it when we assign the pointer
         //body_pid->Init(nh, dt, controlled_axes, default_mode);
 

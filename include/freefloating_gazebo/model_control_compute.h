@@ -75,7 +75,7 @@ public:
     Eigen::MatrixModel22 regressor;
 
     // time between two updates
-    double dt;
+    ros::Duration dt;
 
 private:
     // wrench command

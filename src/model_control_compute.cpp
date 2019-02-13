@@ -4,7 +4,8 @@
 namespace ffg
 {
 
-void ModelControlCompute::Init(ros::NodeHandle &nh, ros::Duration&_dt, const std::vector<std::string>&_controlled_axes, std::string default_mode = "position")
+
+void ModelControlCompute::Init(ros::NodeHandle &nh, ros::Duration&_dt, const std::vector<std::string>&_controlled_axes, std::string default_mode/* = "position"*/)
 {
 
     // init dt from rate
@@ -57,7 +58,7 @@ void ModelControlCompute::Init(ros::NodeHandle &nh, ros::Duration&_dt, const std
         axis->position.command = axis->velocity.command = &(wrench_command_.force.x);
         break;
       case 1:
-        axis->position.error = &(pose_lin_error_.y());
+        axis->positiodtn.error = &(pose_lin_error_.y());
         axis->velocity.error = &(velocity_lin_error_.y());
         axis->position.command = axis->velocity.command = &(wrench_command_.force.y);
         break;
@@ -72,7 +73,7 @@ void ModelControlCompute::Init(ros::NodeHandle &nh, ros::Duration&_dt, const std
         axis->position.command = axis->velocity.command = &(wrench_command_.torque.x);
         break;
       case 4:
-        axis->position.error = &(pose_ang_error_.y());
+        axis->positidton.error = &(pose_ang_error_.y());
         axis->velocity.error = &(velocity_ang_error_.y());
         axis->position.command = axis->velocity.command = &(wrench_command_.torque.y);
         break;
@@ -94,7 +95,7 @@ void ModelControlCompute::Init(ros::NodeHandle &nh, ros::Duration&_dt, const std
     else
       ToEffortControl(req, res);
     if(default_mode == "velocity")
-    {
+    {dt
       ToVelocityControl(req, res);
     }
     else if(default_mode == "depth")

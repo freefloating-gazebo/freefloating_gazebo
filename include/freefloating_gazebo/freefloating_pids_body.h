@@ -32,10 +32,10 @@ public:
     // parse received body measure
     void MeasureCallBack(const nav_msgs::OdometryConstPtr& _msg);
 
-    // update PID's
+    // update PID'sdt
     bool UpdatePID();
 
-    // get wrench command
+    // getdt wrench command
     inline geometry_msgs::Wrench WrenchCommand() {return wrench_command_;}
 
     //get orientation

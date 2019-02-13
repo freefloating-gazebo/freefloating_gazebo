@@ -95,7 +95,7 @@ void ModelControlCompute::Init(ros::NodeHandle &nh, ros::Duration&_dt, const std
     else
       ToEffortControl(req, res);
     if(default_mode == "velocity")
-    {dt
+    {
       ToVelocityControl(req, res);
     }
     else if(default_mode == "depth")
@@ -136,7 +136,7 @@ void ModelControlCompute::UpdateError()
 void ModelControlCompute::UpdateParam()
 {
      param_prev = param_estimated;
-     param_estimated = param_prev + dt*KL.inverse()*regressor.transpose()*s_error_;
+     param_estimated = param_prev + dt.toSec()*KL.inverse()*regressor.transpose()*s_error_;
 }
 
 void ModelControlCompute::UpdateWrench()
@@ -149,7 +149,7 @@ void ModelControlCompute::UpdateWrench()
     Eigen::Matrix6d quad_dampling_regressor = velocity_measure_.array().square().matrix().asDiagonal();
 
     Eigen::Vector6d v = velocity_measure_;
-    Eigen::Vector6d acc = (velocity_measure_ - vel_prev)/dt;
+    Eigen::Vector6d acc = (velocity_measure_ - vel_prev)/dt.toSec();
     vel_prev = velocity_measure_;
     Eigen::Matrix6d  added_effect_regressor;
     added_effect_regressor << acc(0), v(1)*v(5), -v(2)*v(4), 0, 0, 0,

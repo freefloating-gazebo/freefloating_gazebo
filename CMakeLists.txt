@@ -99,7 +99,11 @@ add_dependencies(pid_control ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_dependencies(pid_control freefloating_gazebo_gencpp)
 
 add_executable(model_control src/model_control_main.cpp
-	src/model_control_compute.cpp include/freefloating_gazebo/model_control_compute.h)
+        src/model_control_compute.cpp include/freefloating_gazebo/model_control_compute.h
+        include/freefloating_gazebo/butterworth.h
+        src/freefloating_pids.cpp include/freefloating_gazebo/freefloating_pids.h
+        src/freefloating_pids_body.cpp include/freefloating_gazebo/freefloating_pids_body.h
+        src/freefloating_pids_joint.cpp include/freefloating_gazebo/freefloating_pids_joint.h)
 target_link_libraries(model_control ${catkin_LIBRARIES} ${PROJECT_NAME})
 add_dependencies(model_control ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_dependencies(model_control freefloating_gazebo_gencpp)	

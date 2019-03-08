@@ -86,7 +86,7 @@ void FreeFloatingBodyPids::Init(ros::NodeHandle &nh, ros::Duration&_dt,
     InitPID(axis->velocity.pid, ros::NodeHandle(control_node, axis->name + "/velocity"), use_dynamic_reconfig);
   }
 
-  // default control = positionwrench_command_
+  // default control = position
   CTreq req;
   CTres res;
   if(n)

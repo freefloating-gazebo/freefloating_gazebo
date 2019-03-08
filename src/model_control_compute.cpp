@@ -112,7 +112,6 @@ void ModelControlCompute::UpdateWrench()
 
 }
 
-
 void ModelControlCompute::PositionSPCallBack(const geometry_msgs::PoseStampedConstPtr& _msg)
 {
     setpoint_position_ok = true;
@@ -142,7 +141,6 @@ void ModelControlCompute::MeasureCallBack(const nav_msgs::OdometryConstPtr &_msg
     Eigen::Vector3d velocity_ang_measure_ = pose_ang_measure_inv_.toRotationMatrix()*Eigen::Vector3d(_msg->twist.twist.angular.x, _msg->twist.twist.angular.y, _msg->twist.twist.angular.z);
     velocity_measure_ << velocity_lin_measure_, velocity_ang_measure_;// TODO be sure it can be done
 }
-
 
 }
 

@@ -55,6 +55,18 @@ public:
     // get wrench command
     inline geometry_msgs::Wrench WrenchCommand() {return wrench_command_;}
 
+    // parse received position setpoint
+    void PositionSPCallBack(const geometry_msgs::PoseStampedConstPtr& _msg);
+    // parse received velocity setpoint
+    void VelocitySPCallBack(const geometry_msgs::TwistStampedConstPtr & _msg);
+    // parse received wrench
+    void WrenchSPCallBack(const geometry_msgs::WrenchConstPtr & _msg)
+    {
+        wrench_command_ = _msg->wrench;
+    }
+    // parse received body measure
+    void MeasureCallBack(const nav_msgs::OdometryConstPtr& _msg);
+
     // errors are stored in Vector3
     Eigen::Vector6d pose_error_, velocity_error_, s_error_;
     // velocities are stored in Vector 6
@@ -74,6 +86,8 @@ public:
     // the regressor matrix
     Eigen::MatrixModel22 regressor;
 
+    //
+    bool state_received = false, setpoint_position_ok = false, setpoint_velocity_ok = false;
     // time between two updates
     ros::Duration dt;
 

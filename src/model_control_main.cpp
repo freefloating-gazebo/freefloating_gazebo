@@ -12,7 +12,7 @@ int main(int argc, char ** argv)
     // init ROS node
     ros::init(argc, argv, "freefloating_model_control");
     ros::NodeHandle nh;
-    ros::NodeHandle control_node(nh, "controllers");//Was used when we needed to Init Joints
+    ros::NodeHandle control_node(nh, "controllers");
     ros::NodeHandle priv("~");
 
     ffg::ThrusterAllocator allocator(nh);
@@ -40,10 +40,10 @@ int main(int argc, char ** argv)
         if(priv.hasParam("body_control"))
             priv.getParam("body_control", default_mode);
 
-        const auto controlled_axes = allocator.initControl(nh, 0.07);
+        const auto controlled_axes = allocator.initControl(nh, 0.07);//Est-ce aue ça change qqch dans notre loi de commande ?
 
         body_controller = std::unique_ptr<ffg::ModelControlCompute>(new ffg::ModelControlCompute());
-	body_controller->Init(nh,dt,controlled_axes,default_mode);	
+        body_controller->Init(nh,dt,controlled_axes,default_mode);
         //init Controller. Since calling the object does nothing but set all values to 0
         //std::make_unique<ffg::ModelControlCompute>(); not supported in this c++ version
         //body_controller->Init(nh, dt, controlled_axes, default_mode); It was needed before, now we do it when we assign the pointer
@@ -63,7 +63,7 @@ int main(int argc, char ** argv)
     {
         // update body and publish
         if(control_body && body_controller->Update())
-            body_command_publisher.publish(allocator.wrench2Thrusters(body_controller->WrenchCommand()));//TODO : Write fonction for Control Compute
+            body_command_publisher.publish(allocator.wrench2Thrusters(body_controller->WrenchCommand()));
 
 
         // // update joints and publish

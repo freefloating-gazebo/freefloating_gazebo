@@ -11,106 +11,41 @@ void ModelControlCompute::Init(ros::NodeHandle &nh, ros::Duration&_dt, const std
     // init dt from rate
     dt = _dt;
 
-    /*
-
     // wrench setpoint
     wrench_sp_subscriber =
-        nh.subscribe("body_wrench_setpoint", 1, &FreeFloatingBodyPids::WrenchSPCallBack, this);
+            nh.subscribe("body_wrench_setpoint", 1, &ModelControlCompute::WrenchSPCallBack, this);
     // measure
     state_subscriber =
-        nh.subscribe("state", 1, &FreeFloatingBodyPids::MeasureCallBack, this);
+            nh.subscribe("state", 1, &ModelControlCompute::MeasureCallBack, this);
 
     // deal with controlled axes
     const size_t n = _controlled_axes.size();
-    axes.resize(n);
+    //axes.resize(n);
 
-    const std::vector<std::string> axes3D{"x", "y", "z", "roll", "pitch", "yaw"};
+    //const std::vector<std::string> axes3D{"x", "y", "z", "roll", "pitch", "yaw"};
 
     // get whether or not we use dynamic reconfigure
-    bool use_dynamic_reconfig;
-    ros::NodeHandle control_node(nh, "controllers");
-    control_node.param("controllers/config/body/dynamic_reconfigure", use_dynamic_reconfig, true);
+    //bool use_dynamic_reconfig;
+    //ros::NodeHandle control_node(nh, "controllers");
+    //control_node.param("controllers/config/body/dynamic_reconfigure", use_dynamic_reconfig, true);
 
-    if(n)
+    if(n)//If we cans actually control something
     {
-      // position setpoint
-      position_sp_subscriber =
-          nh.subscribe("body_position_setpoint", 1, &FreeFloatingBodyPids::PositionSPCallBack, this);
-      // velocity setpoint
-      velocity_sp_subscriber =
-          nh.subscribe("body_velocity_setpoint", 1, &FreeFloatingBodyPids::VelocitySPCallBack, this);
-    }
-
-    for(unsigned int i=0;i<n;++i)
-    {
-      const auto idx = static_cast<size_t>(std::distance(axes3D.begin(),
-                                                         std::find(axes3D.begin(),
-                                                                   axes3D.end(),
-                                                                   _controlled_axes[i])));
-      auto axis = &axes[i];
-      axis->name = _controlled_axes[i];
-      // here we have the controlled axis
-      switch(idx)
-      {
-      case 0:
-        axis->position.error = &(pose_lin_error_.x());
-        axis->velocity.error = &(velocity_lin_error_.x());
-        axis->position.command = axis->velocity.command = &(wrench_command_.force.x);
-        break;
-      case 1:
-        axis->positiodtn.error = &(pose_lin_error_.y());
-        axis->velocity.error = &(velocity_lin_error_.y());
-        axis->position.command = axis->velocity.command = &(wrench_command_.force.y);
-        break;
-      case 2:
-        axis->position.error = &(pose_lin_error_.z());
-        axis->velocity.error = &(velocity_lin_error_.z());
-        axis->position.command = axis->velocity.command = &(wrench_command_.force.z);
-        break;
-      case 3:
-        axis->position.error = &(pose_ang_error_.x());
-        axis->velocity.error = &(velocity_ang_error_.x());
-        axis->position.command = axis->velocity.command = &(wrench_command_.torque.x);
-        break;
-      case 4:
-        axis->positidton.error = &(pose_ang_error_.y());
-        axis->velocity.error = &(velocity_ang_error_.y());
-        axis->position.command = axis->velocity.command = &(wrench_command_.torque.y);
-        break;
-      case 5:
-        axis->position.error = &(pose_ang_error_.z());
-        axis->velocity.error = &(velocity_ang_error_.z());
-        axis->position.command = axis->velocity.command = &(wrench_command_.torque.z);
-        break;
-      }
-      InitPID(axis->position.pid, ros::NodeHandle(control_node, axis->name + "/position"), use_dynamic_reconfig);
-      InitPID(axis->velocity.pid, ros::NodeHandle(control_node, axis->name + "/velocity"), use_dynamic_reconfig);
+        if(default_mode == "position"){
+            // position setpoint
+            position_sp_subscriber =
+                    nh.subscribe("body_position_setpoint", 1, &ModelControlCompute::PositionSPCallBack, this);
+        }
+        else if(default_mode == "velocity"){
+            // velocity setpoint
+            velocity_sp_subscriber =
+                    nh.subscribe("body_velocity_setpoint", 1, &ModelControlCompute::VelocitySPCallBack, this);
+        }
+        //TODO initialize setpoint (angular desired value in both cases);
     }
 
-    // default control = position
-    CTreq req;
-    CTres res;
-    if(n)
-      ToPositionControl(req, res);
-    else
-      ToEffortControl(req, res);
-    if(default_mode == "velocity")
-    {
-      ToVelocityControl(req, res);
-    }
-    else if(default_mode == "depth")
-    {
-      req.axes = {"x", "y", "yaw"};
-      ToVelocityControl(req, res);
-    }
-    else if(default_mode == "effort")
-    {
-      req.axes = {"x", "y", "z", "yaw"};
-      ToEffortControl(req, res);
-    }
-    initSwitchServices(control_node, "body");
-
-    */
+    //TODO : default_mode should determine which are the dof we control
+    //TODO : how from the Init function we shall define to the rest of the program what we are going to take into account ?
 }
 
 void ModelControlCompute::UpdateError()
@@ -135,8 +70,8 @@ void ModelControlCompute::UpdateError()
 
 void ModelControlCompute::UpdateParam()
 {
-     param_prev = param_estimated;
-     param_estimated = param_prev + dt.toSec()*KL.inverse()*regressor.transpose()*s_error_;
+    param_prev = param_estimated;
+    param_estimated = param_prev + dt.toSec()*KL.inverse()*regressor.transpose()*s_error_;
 }
 
 void ModelControlCompute::UpdateWrench()
@@ -176,6 +111,38 @@ void ModelControlCompute::UpdateWrench()
 
 
 }
+
+
+void ModelControlCompute::PositionSPCallBack(const geometry_msgs::PoseStampedConstPtr& _msg)
+{
+    setpoint_position_ok = true;
+
+    pose_lin_setpoint_ = Eigen::Vector3d(_msg->pose.position.x, _msg->pose.position.y, _msg->pose.position.z);
+    pose_ang_setpoint_ = Eigen::Quaterniond(_msg->pose.orientation.w, _msg->pose.orientation.x, _msg->pose.orientation.y, _msg->pose.orientation.z);
+}
+
+void ModelControlCompute::VelocitySPCallBack(const geometry_msgs::TwistStampedConstPtr & _msg)
+{
+    setpoint_velocity_ok = true;
+    Eigen::Vector3d velocity_lin_setpoint_ = Eigen::Vector3d(_msg->twist.linear.x, _msg->twist.linear.y, _msg->twist.linear.z);
+    Eigen::Vector3d velocity_ang_setpoint_ = Eigen::Vector3d(_msg->twist.angular.x, _msg->twist.angular.y, _msg->twist.angular.z);
+    velocity_setpoint_ << velocity_lin_setpoint_, velocity_ang_setpoint_;
+}
+
+void ModelControlCompute::MeasureCallBack(const nav_msgs::OdometryConstPtr &_msg)
+{
+    state_received = true;
+    // positions are expressed in the world frame, rotation is inversed
+    pose_lin_measure_ = Eigen::Vector3d(_msg->pose.pose.position.x, _msg->pose.pose.position.y, _msg->pose.pose.position.z);
+    pose_ang_measure_inv_ = Eigen::Quaterniond(_msg->pose.pose.orientation.w, _msg->pose.pose.orientation.x, _msg->pose.pose.orientation.y, _msg->pose.pose.orientation.z).inverse();
+
+    // change velocities from world to body frame
+
+    Eigen::Vector3d velocity_lin_measure_ = pose_ang_measure_inv_.toRotationMatrix()*Eigen::Vector3d(_msg->twist.twist.linear.x, _msg->twist.twist.linear.y, _msg->twist.twist.linear.z);
+    Eigen::Vector3d velocity_ang_measure_ = pose_ang_measure_inv_.toRotationMatrix()*Eigen::Vector3d(_msg->twist.twist.angular.x, _msg->twist.twist.angular.y, _msg->twist.twist.angular.z);
+    velocity_measure_ << velocity_lin_measure_, velocity_ang_measure_;// TODO be sure it can be done
+}
+
 
 }
 

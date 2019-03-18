@@ -63,7 +63,7 @@ public:
     // parse received velocity setpoint
     void VelocitySPCallBack(const geometry_msgs::TwistStampedConstPtr & _msg);
     // parse received wrench
-    void WrenchSPCallBack(const geometry_msgs::WrenchConstPtr & _msg)
+    void WrenchSPCallBack(const geometry_msgs::WrenchStampedConstPtr & _msg)
     {
         wrench_command_ = _msg->wrench;
     }
@@ -95,6 +95,10 @@ public:
     ros::Duration dt;
 
 private:
+
+	ros::Subscriber position_sp_subscriber, velocity_sp_subscriber,
+        wrench_sp_subscriber, state_subscriber;
+        
     // wrench command
     geometry_msgs::Wrench wrench_command_;
 

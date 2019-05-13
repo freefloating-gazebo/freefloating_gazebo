@@ -17,7 +17,6 @@ public:
         init(frequency, dt);
     }
 
-
     void init(double frequency, double dt)
     {
         const double ita =1.0/ tan(M_PI*frequency*dt);

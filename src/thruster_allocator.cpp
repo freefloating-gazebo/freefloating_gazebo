@@ -12,10 +12,11 @@ ThrusterAllocator::ThrusterAllocator(ros::NodeHandle &nh)
   base_link = parser.getLinks().find("base_link")->second;
 
   // keep dynamics
-  parser.thrusterInfo(fixed_idx, steer_idx, names, max_thrust);
+  parser.thrusterInfo(fixed_idx, steer_idx, thrust_msg.name, max_thrust);
   max_wrench = parser.maxWrench();
   max_vel = parser.maxVelocity();
   map = parser.thrusterMap();
+  thrust_msg.effort.resize(thrust_msg.name.size());
 }
 
 std::vector<std::string> ThrusterAllocator::initControl(ros::NodeHandle &nh, double map_threshold)
@@ -77,20 +78,18 @@ void ThrusterAllocator::saturate(Eigen::VectorXd &_command) const
   _command *= 1./norm_ratio;
 }
 
-sensor_msgs::JointState ThrusterAllocator::wrench2Thrusters(const geometry_msgs::Wrench &cmd) const
+sensor_msgs::JointState ThrusterAllocator::wrench2Thrusters(const geometry_msgs::Wrench &cmd)
 {
+  thrust_msg.header.stamp = ros::Time::now();
   Eigen::VectorXd wrench(6);
   wrench << cmd.force.x, cmd.force.y, cmd.force.z,
       cmd.torque.x, cmd.torque.y, cmd.torque.z;
-  sensor_msgs::JointState msg;
-  msg.name = names;
-  msg.effort.reserve(names.size());
 
   Eigen::VectorXd thrust = inverse_map * wrench;
   saturate(thrust);
 
   for(int i = 0; i < thrust.rows(); i++)
-    msg.effort.push_back(thrust[i]);
-  return msg;
+    thrust_msg.effort[i] = thrust[i];
+  return thrust_msg;
 }
 }

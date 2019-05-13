@@ -18,13 +18,11 @@ class FreeFloatingFluidPlugin : public  WorldPlugin
 
     typedef ignition::math::Vector3d Vector3d;
 
-
 public:
-    FreeFloatingFluidPlugin() {}
+    FreeFloatingFluidPlugin() : nh_("gazebo") {}
     ~FreeFloatingFluidPlugin()
     {
-        rosnode_->shutdown();
-        delete rosnode_;
+        nh_.shutdown();
     }
 
     virtual void Load(physics::WorldPtr _world, sdf::ElementPtr _sdf);
@@ -67,11 +65,11 @@ private:
 
 private:
     // plugin options
-    bool has_surface_;
+    bool has_surface_ = false;
     ignition::math::Vector4d surface_plane_;
 
     // general data
-    ros::NodeHandle* rosnode_;
+    ros::NodeHandle nh_;
     ros::CallbackQueue callback_queue_;
     physics::WorldPtr world_;
     event::ConnectionPtr update_event_;

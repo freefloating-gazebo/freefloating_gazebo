@@ -216,6 +216,7 @@ void FreeFloatingControlPlugin::Update()
       // compute and publish thruster use in %
       for(size_t i=0;i<thruster_command_.size();++i)
         thruster_use_.position[i] = 100*std::abs(thruster_command_(i) / thruster_max[i]);
+      thruster_use_.header.stamp = ros::Time::now();
       thruster_use_publisher_.publish(thruster_use_);
     }
   }

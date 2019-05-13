@@ -27,7 +27,6 @@ ignition::math::Vector3d v3convert(gazebo::math::Vector3 src)
 
 namespace gazebo
 {
-
 void FreeFloatingFluidPlugin::ReadVector3(const std::string &_string, Vector3d &_vector)
 {
   std::stringstream ss(_string);
@@ -46,11 +45,8 @@ void FreeFloatingFluidPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sd
 #else
    world_->Physics()->GetUpdatePeriod();
 #endif
-  // register ROS node
-  rosnode_ = new ros::NodeHandle("gazebo");
 
   // parse plugin options
-  has_surface_ = false;
   surface_plane_.Set(0,0,1,0); // default ocean surface plane is Z=0
   std::string fluid_topic = "current";
 
@@ -69,7 +65,7 @@ void FreeFloatingFluidPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sd
     // water surface is orthogonal to gravity
     surface_plane_.Set(WORLD_GRAVITY.X(), WORLD_GRAVITY.Y(), WORLD_GRAVITY.Z(), WORLD_GRAVITY.Dot(surface_point));
     // push on parameter server
-    rosnode_->setParam("surface", surface_point.Z());
+    nh_.setParam("surface", surface_point.Z());
   }
 
   if(_sdf->HasElement("fluidTopic"))  fluid_topic = _sdf->Get<std::string>("fluidTopic");
@@ -80,7 +76,7 @@ void FreeFloatingFluidPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sd
         boost::bind(&FreeFloatingFluidPlugin::FluidVelocityCallBack, this, _1),
         ros::VoidPtr(), &callback_queue_);
   fluid_velocity_.Set(0,0,0);
-  fluid_velocity_subscriber_ = rosnode_->subscribe(ops);
+  fluid_velocity_subscriber_ = nh_.subscribe(ops);
 
   // Register plugin update
   update_event_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&FreeFloatingFluidPlugin::Update, this));
@@ -262,17 +258,17 @@ void FreeFloatingFluidPlugin::ParseNewModel(const physics::ModelPtr &_model)
   model_st new_model;
   new_model.name = _model->GetName();
   new_model.model_ptr = _model;
-  new_model.state_publisher = rosnode_->advertise<nav_msgs::Odometry>("/" + _model->GetName() + "/state", 1);
+  new_model.state_publisher = nh_.advertise<nav_msgs::Odometry>("/" + _model->GetName() + "/state", 1);
   // tells this model has been parsed
   parsed_models_.push_back(new_model);
 
   // get link properties from robot_description to add hydro effects
-  if(!rosnode_->hasParam("/" + _model->GetName() + "/robot_description"))
+  if(!nh_.hasParam("/" + _model->GetName() + "/robot_description"))
     return;
 
   const auto previous_link_number = buoyant_links_.size();
   std::string robot_description;
-  rosnode_->getParam("/" + _model->GetName() + "/robot_description", robot_description);
+  nh_.getParam("/" + _model->GetName() + "/robot_description", robot_description);
   ffg::HydroModelParser parser;
   parser.parseLinks(robot_description);
 

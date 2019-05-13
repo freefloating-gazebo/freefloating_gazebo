@@ -12,6 +12,7 @@ ffg::HydroModelParser parser;
 parser.parseAll(nh);
 const auto link = parser.getLink("base_link");
 auto map = parser.thrusterMap();
+
 std::cout << "Map: " << map << std::endl;
 std::cout << "Inertia: \n" << link.inertia << std::endl;
 if(link.has_added_mass)

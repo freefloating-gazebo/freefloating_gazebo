@@ -18,7 +18,7 @@ public:
   ThrusterAllocator(ros::NodeHandle &nh);
 
   std::vector<std::string> initControl(ros::NodeHandle &nh, double map_threshold = 1e-2);
-  bool has_thrusters() const {return names.size();}
+  bool has_thrusters() const {return thrust_msg.name.size();}
 
   geometry_msgs::Wrench maxWrench() const
   {
@@ -34,11 +34,19 @@ public:
 
   void saturate(Eigen::VectorXd &_command) const;
 
-  sensor_msgs::JointState wrench2Thrusters(const geometry_msgs::Wrench  & cmd) const;
+  sensor_msgs::JointState wrench2Thrusters(const geometry_msgs::Wrench  & cmd);
+  sensor_msgs::JointState wrench2Thrusters(const geometry_msgs::Wrench  & cmd,
+                                           const Eigen::Quaternion<double> &rot) const
+  {
+
+
+
+
+  }
 
   ffg::HydroLink base_link;
   std::vector<uint> steer_idx, fixed_idx;
-  std::vector<std::string> names;
+  sensor_msgs::JointState thrust_msg;
   std::vector<double> max_thrust, max_wrench, max_vel;
 
   Eigen::MatrixXd map;

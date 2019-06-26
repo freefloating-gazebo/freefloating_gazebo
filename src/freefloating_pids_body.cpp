@@ -118,7 +118,7 @@ bool FreeFloatingBodyPids::UpdatePID()
   {
     if(setpoint_position_ok && position_used)    // setpoint & need for position PID
     {
-      Eigen::Matrix3d world_to_body = pose_ang_measure_inv_.toRotationMatrix();
+      const Eigen::Matrix3d world_to_body = pose_ang_measure_inv_.toRotationMatrix();
       // express pose error in the body frame
       pose_lin_error_ = world_to_body * (pose_lin_setpoint_ - pose_lin_measure_);
       // quaternion error in the body frame
@@ -174,11 +174,11 @@ void FreeFloatingBodyPids::VelocitySPCallBack(const geometry_msgs::TwistStampedC
 void FreeFloatingBodyPids::MeasureCallBack(const nav_msgs::OdometryConstPtr &_msg)
 {
   state_received = true;
-  // positions are expressed in the world frame, rotation is inversed
+  // positions are expressed in the world frame, rotation is inversed (world to body)
   pose_lin_measure_ = Eigen::Vector3d(_msg->pose.pose.position.x, _msg->pose.pose.position.y, _msg->pose.pose.position.z);
   pose_ang_measure_inv_ = Eigen::Quaterniond(_msg->pose.pose.orientation.w, _msg->pose.pose.orientation.x, _msg->pose.pose.orientation.y, _msg->pose.pose.orientation.z).inverse();
 
-  // change velocities from world to body frame
-  velocity_lin_measure_ = pose_ang_measure_inv_.toRotationMatrix()*Eigen::Vector3d(_msg->twist.twist.linear.x, _msg->twist.twist.linear.y, _msg->twist.twist.linear.z);
-  velocity_ang_measure_ = pose_ang_measure_inv_.toRotationMatrix()*Eigen::Vector3d(_msg->twist.twist.angular.x, _msg->twist.twist.angular.y, _msg->twist.twist.angular.z);
+  // velocities already in body frame
+  velocity_lin_measure_ = Eigen::Vector3d(_msg->twist.twist.linear.x, _msg->twist.twist.linear.y, _msg->twist.twist.linear.z);
+  velocity_ang_measure_ = Eigen::Vector3d(_msg->twist.twist.angular.x, _msg->twist.twist.angular.y, _msg->twist.twist.angular.z);
 }

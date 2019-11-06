@@ -35,10 +35,10 @@ Eigen::Vector6d HydroLink::hydroDynamicForce(Eigen::Vector6d &vel)
     vel_filter.filter(vel);
 
   // damping part
-  if(has_lin_damping)
-    force = -lin_damping.cwiseProduct(vel);
-  if(has_quad_damping)
-    force -= quad_damping.cwiseProduct(vel.cwiseProduct(vel.cwiseAbs()));
+  if(has_lin_drag)
+    force = -lin_drag.cwiseProduct(vel);
+  if(has_quad_drag)
+    force -= quad_drag.cwiseProduct(vel.cwiseProduct(vel.cwiseAbs()));
 
   // added mass part
   if(has_added_mass)

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+    
+<arg name="ns" default=""/>
+<arg name="config" default=""/>
+<arg name="state_publisher" default="False"/>
+
+<group ns="$(arg ns)"> 
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" if="$(arg state_publisher)"/>
+    <node name="rviz_bridge" pkg="freefloating_gazebo" type="rviz_bridge.py" output="screen" respawn="true"/>  
+    <node name="rviz" pkg="rviz" type="rviz"  args="-d $(arg config)" output="screen"  respawn="true"/>
+</group>
+</launch>

@@ -76,8 +76,6 @@ include_directories(include ${Boost_INCLUDE_DIR}
                     ${catkin_INCLUDE_DIRS}
                     ${EIGEN3_INCLUDE_DIRS})
 
-
-
 add_library(freefloating_gazebo
   include/freefloating_gazebo/butterworth.h
     include/freefloating_gazebo/hydro_link.h src/hydro_link.cpp
@@ -85,18 +83,26 @@ add_library(freefloating_gazebo
   include/freefloating_gazebo/thruster_allocator.h src/thruster_allocator.cpp)
 target_link_libraries(freefloating_gazebo ${catkin_LIBRARIES})
 
-
+add_library(ffg_pid
+  include/freefloating_gazebo/butterworth.h
+  src/freefloating_pids.cpp include/freefloating_gazebo/freefloating_pids.h
+  src/freefloating_pids_body.cpp include/freefloating_gazebo/freefloating_pids_body.h
+  src/freefloating_pids_joint.cpp include/freefloating_gazebo/freefloating_pids_joint.h)
+target_link_libraries(ffg_pid ${catkin_LIBRARIES} ${PROJECT_NAME})
+add_dependencies(ffg_pid ${${PROJECT_NAME}_EXPORTED_TARGETS})
+add_dependencies(ffg_pid freefloating_gazebo_gencpp)
 
 # node to perform PID control for body (thrusters) and joints
-add_executable(pid_control src/freefloating_pids_main.cpp
-    include/freefloating_gazebo/butterworth.h
-    src/freefloating_pids.cpp include/freefloating_gazebo/freefloating_pids.h
-    src/freefloating_pids_body.cpp include/freefloating_gazebo/freefloating_pids_body.h
-    src/freefloating_pids_joint.cpp include/freefloating_gazebo/freefloating_pids_joint.h)
-target_link_libraries(pid_control ${catkin_LIBRARIES} ${PROJECT_NAME})
-add_dependencies(pid_control ${${PROJECT_NAME}_EXPORTED_TARGETS})
-add_dependencies(pid_control freefloating_gazebo_gencpp)
+add_executable(pid_control src/pids/pid_body_joints.cpp)
+target_link_libraries(pid_control ffg_pid)
 
+# node to perform PID control for body only (no joints)
+add_executable(pid_body src/pids/pid_body.cpp)
+target_link_libraries(pid_body ffg_pid)
+
+# node to perform PID control for joints only (no body)
+add_executable(pid_joints src/pids/pid_joints.cpp)
+target_link_libraries(pid_joints ffg_pid)
 
 if(gazebo_FOUND)
 

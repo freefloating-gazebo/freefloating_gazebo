@@ -91,7 +91,7 @@ void HydroModelParser::parseThrusters(std::string sdf_str, std::string robot_nam
       {
         std::ostringstream ss;
         ss << "thr" << thrusters.size();
-        name = ss.str();;
+        name = ss.str();
       }
 
       // new thruster
@@ -339,7 +339,7 @@ void HydroModelParser::addHydrodynamics(HydroLink &link, const tinyxml2::XMLElem
           ss >> link.added_mass(i,j);
       }
     }
-    else if(strcmp(node->Value(), "damping") == 0)
+    else if(strcmp(node->Value(), "damping") == 0 || strcmp(node->Value(), "drag") == 0 )
     {
       bool linear = false;
       if(node->Attribute("type") != nullptr)
@@ -349,15 +349,15 @@ void HydroModelParser::addHydrodynamics(HydroLink &link, const tinyxml2::XMLElem
       {
         if(linear)
         {
-          link.has_lin_damping = true;
-          link.lin_damping.head<3>() = readVector3(node->Attribute("xyz"));
+          link.has_lin_drag = true;
+          link.lin_drag.head<3>() = readVector3(node->Attribute("xyz"));
           ROS_INFO("Found linear linear damping");
         }
         else
         {
-          link.has_quad_damping = true;
-          link.quad_damping.head<3>() = readVector3(node->Attribute("xyz"));
-          ROS_INFO("Found quadratic linear damping");
+          link.has_quad_drag = true;
+          link.quad_drag.head<3>() = readVector3(node->Attribute("xyz"));
+          ROS_INFO("Found quadratic linear drag");
         }
       }
 
@@ -365,14 +365,14 @@ void HydroModelParser::addHydrodynamics(HydroLink &link, const tinyxml2::XMLElem
       {
         if(linear)
         {
-          link.has_lin_damping = true;
-          link.lin_damping.tail<3>() = readVector3(node->Attribute("rpy"));
-          ROS_INFO("Found linear angular damping");
+          link.has_lin_drag = true;
+          link.lin_drag.tail<3>() = readVector3(node->Attribute("rpy"));
+          ROS_INFO("Found linear angular drag");
         }
         else
         {
-          link.has_quad_damping = true;
-          link.quad_damping.tail<3>() = readVector3(node->Attribute("rpy"));
+          link.has_quad_drag = true;
+          link.quad_drag.tail<3>() = readVector3(node->Attribute("rpy"));
           ROS_INFO("Found quadratic angular damping");
         }
       }
@@ -381,10 +381,10 @@ void HydroModelParser::addHydrodynamics(HydroLink &link, const tinyxml2::XMLElem
   // density factor
   if(link.has_added_mass)
     link.added_mass *= density;
-  if(link.has_lin_damping)
-    link.lin_damping *= density;
-  if(link.has_quad_damping)
-    link.quad_damping *= density;
+  if(link.has_lin_drag)
+    link.lin_drag *= density;
+  if(link.has_quad_drag)
+    link.quad_drag *= density;
 }
 
 Eigen::MatrixXd HydroModelParser::thrusterMap() const
@@ -452,8 +452,8 @@ std::vector<double> HydroModelParser::maxVelocity() const
   const auto &base_link = links.at("base_link");
   for(uint axis = 0; axis < 6; ++axis)
   {
-    const double lin = base_link.has_lin_damping?base_link.lin_damping[axis]:0;
-    const double quad = base_link.has_quad_damping?base_link.quad_damping[axis]:0;
+    const double lin = base_link.has_lin_drag?base_link.lin_drag[axis]:0;
+    const double quad = base_link.has_quad_drag?base_link.quad_drag[axis]:0;
 
     if(quad > 1e-6)
     {

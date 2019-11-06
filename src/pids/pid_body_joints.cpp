@@ -17,9 +17,12 @@ int main(int argc, char ** argv)
   ffg::ThrusterAllocator allocator(nh);
 
   // wait for Gazebo running
-  ros::service::waitForService("/gazebo/unpause_physics");
+  //ros::service::waitForService("/gazebo/unpause_physics");
   const bool control_body = allocator.has_thrusters();
   const bool control_joints = FreeFloatingJointPids::writeJointLimits(nh);
+
+  if(!control_body && !control_joints)
+    return 0;
 
   // loop rate
   ros::Rate loop(100);
@@ -76,10 +79,7 @@ int main(int argc, char ** argv)
   {
     // update body and publish
     if(control_body && body_pid->UpdatePID())
-    {
-
-        body_command_publisher.publish(allocator.wrench2Thrusters(body_pid->WrenchCommand()));   
-    }
+        body_command_publisher.publish(allocator.wrench2Thrusters(body_pid->WrenchCommand()));
 
     // update joints and publish
     if(control_joints && joint_pid->UpdatePID())

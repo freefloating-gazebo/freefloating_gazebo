@@ -27,8 +27,8 @@ public:
     vel_prev.setZero();
     added_mass.setZero();
     inertia.setZero();
-    lin_damping.setZero();
-    quad_damping.setZero();
+    lin_drag.setZero();
+    quad_drag.setZero();
   }
 
   void initFilters(double _dt, double frequency = 10)
@@ -45,10 +45,10 @@ public:
   double buoyancy_force = 0, buoyancy_limit = 0, mass = 0;
 
   Eigen::Matrix6d inertia;
-  Eigen::Vector6d lin_damping, quad_damping;
+  Eigen::Vector6d lin_drag, quad_drag;
   Eigen::Matrix6d added_mass;
-  bool has_lin_damping = false;
-  bool has_quad_damping = false;
+  bool has_lin_drag = false;
+  bool has_quad_drag = false;
   bool has_added_mass = false;
 
 private:

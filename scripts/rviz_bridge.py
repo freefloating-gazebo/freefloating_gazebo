@@ -34,19 +34,8 @@ if __name__ == '__main__':
     br = tf.TransformBroadcaster()
                 
     listener = Listener()
-    
-    # wait 5 s for thruster to initialize wrench dimension
-    t = rospy.Time.now().to_sec()
-    while not rospy.is_shutdown() and rospy.Time.now().to_sec() - t < 5:
-        if listener.thruster_received:
-            n_th = len(listener.thruster.name)
-            break
-    use_position = (len(listener.thruster.name) == len(listener.thruster.position))
-        
-    wrench_pub = [rospy.Publisher(name + '_wrench', WrenchStamped, queue_size=1) for name in listener.thruster.name]
-    wrench = [WrenchStamped() for name in listener.thruster.name]
-    for i,w in enumerate(wrench):
-        w.header.frame_id = listener.thruster.name[i]
+            
+    wrench_pub = []
 
     T =1./50
     ratio = 1./5
@@ -57,6 +46,16 @@ if __name__ == '__main__':
         br.sendTransform((t.x, t.y, t.z), (0,0,0,1), rospy.Time.now(), 'base_link_R', listener.odom.header.frame_id)
             
         if listener.thruster_received:
+            if len(wrench_pub) == 0:
+                # init dimension and publishers
+                use_position = (len(listener.thruster.name) == len(listener.thruster.position))
+            
+                wrench_pub = [rospy.Publisher(name + '_wrench', WrenchStamped, queue_size=1) for name in listener.thruster.name]
+                wrench = [WrenchStamped() for name in listener.thruster.name]
+                for i,w in enumerate(wrench):
+                    w.header.frame_id = listener.thruster.name[i]
+                
+            # publish wrenches
             for i,w in enumerate(wrench):
                 w.header.stamp = rospy.Time.now()
                 if use_position:

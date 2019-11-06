@@ -88,7 +88,7 @@ sensor_msgs::JointState ThrusterAllocator::wrench2Thrusters(const geometry_msgs:
   Eigen::VectorXd thrust = inverse_map * wrench;
   saturate(thrust);
 
-  for(int i = 0; i < thrust.rows(); i++)
+  for(uint i = 0; i < thrust.rows(); i++)
     thrust_msg.effort[i] = thrust[i];
   return thrust_msg;
 }

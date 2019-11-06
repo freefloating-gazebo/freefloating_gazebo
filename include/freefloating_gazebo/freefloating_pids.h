@@ -42,10 +42,10 @@ public:
   void UpdateVelocityPID();
 
   // service to switch controllers
-  bool ToPositionControl(CTreq _req, CTres &_res);
-  bool ToVelocityControl(CTreq _req, CTres &_res);
-  bool ToEffortControl(CTreq _req, CTres &_res);
-  void printControlType() const;
+  bool ToPositionControl(const CTreq &_req, CTres &_res);
+  bool ToVelocityControl(const CTreq &_req, CTres &_res);
+  bool ToEffortControl(const CTreq &_req, CTres &_res);
+  void checkControlTypes(const CTreq &_req);
 
   // init services base on prefix
   void initSwitchServices(ros::NodeHandle &control_node, std::string name);
@@ -66,6 +66,7 @@ protected:
   setpoint_velocity_ok = false,
   state_received = false,
   cascaded_position = false,
+
   position_used = false,
   velocity_used = false;
 };

@@ -24,19 +24,19 @@ void FreeFloatingPids::initSwitchServices(ros::NodeHandle &control_node, std::st
 
 void FreeFloatingPids::UpdatePositionPID()
 {
-    for(auto & axis: axes)
-      if(axis.position.active)
-        axis.position.updateCommand(dt);
+  for(auto & axis: axes)
+    if(axis.position.active)
+      axis.position.updateCommand(dt);
 }
 
 void FreeFloatingPids::UpdateVelocityPID()
 {
-    for(auto & axis: axes)
-      if(axis.velocity.active)
-        axis.velocity.updateCommand(dt);
+  for(auto & axis: axes)
+    if(axis.velocity.active)
+      axis.velocity.updateCommand(dt);
 }
 
-bool FreeFloatingPids::ToPositionControl(CTreq _req, CTres &_res)
+bool FreeFloatingPids::ToPositionControl(const CTreq &_req, CTres &_res)
 {
   ignore(_res);
   for(auto & axis: axes)
@@ -51,15 +51,12 @@ bool FreeFloatingPids::ToPositionControl(CTreq _req, CTres &_res)
       axis.velocity.active = cascaded_position;
     }
   }
-  position_used = std::find_if(axes.begin(), axes.end(),
-                               [](const Axis &axis){return axis.position.active;})
-      != axes.end();
-  printControlType();
+  checkControlTypes(_req);
   return true;
 }
 
 
-bool FreeFloatingPids::ToVelocityControl(CTreq _req, CTres &_res)
+bool FreeFloatingPids::ToVelocityControl(const CTreq &_req, CTres &_res)
 {
   ignore(_res);
   for(auto & axis: axes)
@@ -73,16 +70,12 @@ bool FreeFloatingPids::ToVelocityControl(CTreq _req, CTres &_res)
       axis.position.active = false;
     }
   }
-  velocity_used = std::find_if(axes.begin(), axes.end(),
-                               [](const Axis &axis){return axis.velocity.active;})
-      != axes.end();
-
-  printControlType();
+  checkControlTypes(_req);
   return true;
 }
 
 
-bool FreeFloatingPids::ToEffortControl(CTreq _req, CTres &_res)
+bool FreeFloatingPids::ToEffortControl(const CTreq &_req, CTres &_res)
 {
   ignore(_res);
   for(auto & axis: axes)
@@ -93,24 +86,41 @@ bool FreeFloatingPids::ToEffortControl(CTreq _req, CTres &_res)
                   axis.name) != _req.axes.end()))
       axis.position.active = axis.velocity.active = false;
   }
-  printControlType();
+  checkControlTypes(_req);
   return true;
 }
 
-void FreeFloatingPids::printControlType() const
+void FreeFloatingPids::checkControlTypes(const CTreq &_req)
 {
-  std::cout << "Control modes:\n";
+  const auto display = std::find(_req.axes.begin(),
+                                 _req.axes.end(),
+                                 "nodisplay") == _req.axes.end();
+
+  if(display)
+    std::cout << "Control modes:\n";
+
+  position_used = velocity_used = false;
+
   for(const auto & axis: axes)
   {
     std::cout << "   -  " << axis.name << ": ";
     if(axis.position.active)
-      std::cout << "position\n";
+    {
+      position_used = true;
+      if(display)
+        std::cout << "position\n";
+    }
     else if(axis.velocity.active)
-      std::cout << "velocity\n";
-    else
+    {
+      velocity_used = true;
+      if(display)
+        std::cout << "velocity\n";
+    }
+    else if(display)
       std::cout << "effort\n";
   }
-  std::cout << std::endl;
+  if(display)
+    std::cout << std::endl;
 }
 
 void FreeFloatingPids::InitPID(control_toolbox::Pid &_pid, const ros::NodeHandle &pid_node, const bool &_use_dynamic_reconfig)

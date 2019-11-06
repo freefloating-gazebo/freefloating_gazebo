@@ -80,6 +80,7 @@ void FreeFloatingJointPids::Init(ros::NodeHandle &nh,
 
   // init to default control
   CTreq req;
+  req.axes = {"nodisplay"};
   CTres res;
 
   if(default_mode == "velocity")
@@ -225,7 +226,6 @@ bool FreeFloatingJointPids::writeJointLimits(ros::NodeHandle & nh)
         else
           control_node.setParam(name + "/position/i_clamp",
                                 joint_ptr->limits->effort);
-
 
         // set max effort for the velocity PID
         control_node.setParam(name + "/velocity/i_clamp",

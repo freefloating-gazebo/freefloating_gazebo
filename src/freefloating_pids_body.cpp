@@ -9,19 +9,30 @@ void FreeFloatingBodyPids::Init(ros::NodeHandle &nh, ros::Duration&_dt,
                                 const std::vector<std::string>&_controlled_axes,
                                 std::string default_mode)
 {
-  // init dt from rate
-  dt = _dt;
+  // deal with controlled axes
+  const size_t n = _controlled_axes.size();
 
   // wrench setpoint
   wrench_sp_subscriber =
       nh.subscribe("body_wrench_setpoint", 1, &FreeFloatingBodyPids::WrenchSPCallBack, this);
+
+  // init dt from rate
+  dt = _dt;
+
+  CTres res;
+  CTreq req;
+  req.axes = {"nodisplay"};
+  if(!n)
+  {
+    ToEffortControl(req, res);
+    return;
+  }
+
+  axes.resize(n);
+
   // measure
   state_subscriber =
       nh.subscribe("state", 1, &FreeFloatingBodyPids::MeasureCallBack, this);
-
-  // deal with controlled axes
-  const size_t n = _controlled_axes.size();
-  axes.resize(n);
 
   const std::vector<std::string> axes3D{"x", "y", "z", "roll", "pitch", "yaw"};
 
@@ -30,15 +41,12 @@ void FreeFloatingBodyPids::Init(ros::NodeHandle &nh, ros::Duration&_dt,
   ros::NodeHandle control_node(nh, "controllers");
   control_node.param("controllers/config/body/dynamic_reconfigure", use_dynamic_reconfig, true);
 
-  if(n)
-  {
-    // position setpoint
-    position_sp_subscriber =
-        nh.subscribe("body_position_setpoint", 1, &FreeFloatingBodyPids::PositionSPCallBack, this);
-    // velocity setpoint
-    velocity_sp_subscriber =
-        nh.subscribe("body_velocity_setpoint", 1, &FreeFloatingBodyPids::VelocitySPCallBack, this);
-  }
+  // position setpoint
+  position_sp_subscriber =
+      nh.subscribe("body_position_setpoint", 1, &FreeFloatingBodyPids::PositionSPCallBack, this);
+  // velocity setpoint
+  velocity_sp_subscriber =
+      nh.subscribe("body_velocity_setpoint", 1, &FreeFloatingBodyPids::VelocitySPCallBack, this);
 
   for(unsigned int i=0;i<n;++i)
   {
@@ -87,24 +95,19 @@ void FreeFloatingBodyPids::Init(ros::NodeHandle &nh, ros::Duration&_dt,
   }
 
   // default control = position
-  CTreq req;
-  CTres res;
-  if(n)
-    ToPositionControl(req, res);
-  else
-    ToEffortControl(req, res);
+  ToPositionControl(req, res);
   if(default_mode == "velocity")
   {
     ToVelocityControl(req, res);
   }
   else if(default_mode == "depth")
   {
-    req.axes = {"x", "y", "yaw"};
+    req.axes = {"nodisplay", "x", "y", "yaw"};
     ToVelocityControl(req, res);
   }
   else if(default_mode == "effort")
   {
-    req.axes = {"x", "y", "z", "yaw"};
+    req.axes = {"nodisplay", "x", "y", "z", "yaw"};
     ToEffortControl(req, res);
   }
   initSwitchServices(control_node, "body");

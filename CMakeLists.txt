@@ -58,7 +58,7 @@ generate_messages(
 
 catkin_package(
  INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIRS}
- LIBRARIES ${PROJECT_NAME}
+ LIBRARIES ${PROJECT_NAME} ffg_pid
  CATKIN_DEPENDS
     roscpp
     std_msgs
@@ -139,7 +139,7 @@ target_link_libraries(sdf_parse ${catkin_LIBRARIES} ${catkin_LIBRARIES} ${PROJEC
 endif()
 
 
-install(TARGETS pid_control pid_joints pid_body ${PROJECT_NAME}
+install(TARGETS pid_control pid_joints pid_body ffg_pid ${PROJECT_NAME}
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
@@ -151,4 +151,6 @@ install(DIRECTORY scripts
                   srv
                   gui
             DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
-
+            
+catkin_install_python(PROGRAMS scripts/surface.py scripts/rviz_bridge.py
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}    )

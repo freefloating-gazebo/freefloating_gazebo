@@ -139,7 +139,7 @@ target_link_libraries(sdf_parse ${catkin_LIBRARIES} ${catkin_LIBRARIES} ${PROJEC
 endif()
 
 
-install(TARGETS pid_control ${PROJECT_NAME}
+install(TARGETS pid_control pid_joints pid_body ${PROJECT_NAME}
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

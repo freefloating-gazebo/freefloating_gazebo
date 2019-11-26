@@ -30,22 +30,21 @@ int main(int argc, char ** argv)
   // PID's class
   FreeFloatingBodyPids body_pid;
   ros::Publisher body_command_publisher;
-  std::string default_mode = "position";
+  std::string control_mode = "position";
 
 
   std::stringstream ss;
   ss << "Init PID control for " << nh.getNamespace() << ": ";
-  if(priv.hasParam("body_control"))
-    priv.getParam("body_control", default_mode);
+  priv.param<std::string>("body_control", control_mode, "position");
 
   const auto controlled_axes = allocator.initControl(nh, 0.07);
-  body_pid.Init(nh, dt, controlled_axes, default_mode);
+  body_pid.Init(nh, dt, controlled_axes, control_mode);
 
   // command
   body_command_publisher =
       nh.advertise<sensor_msgs::JointState>("thruster_command", 1);
 
-  ss << controlled_axes.size() << " controlled axes (" << default_mode << " control)";
+  ss << controlled_axes.size() << " controlled axes (" << control_mode << " control)";
 
   ROS_INFO("%s", ss.str().c_str());
 

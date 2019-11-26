@@ -78,17 +78,12 @@ void FreeFloatingJointPids::Init(ros::NodeHandle &nh,
   }
   initSwitchServices(control_node, "joints");
 
-  // init to default control
-  CTreq req;
-  req.axes = {"nodisplay"};
-  CTres res;
-
   if(default_mode == "velocity")
-    ToVelocityControl(req, res);
+    initVelocityControl();
   else if(default_mode == "effort")
-    ToEffortControl(req, res);
+    initEffortControl();
   else
-    ToPositionControl(req, res);
+    initPositionControl();
 }
 
 

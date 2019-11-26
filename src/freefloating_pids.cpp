@@ -92,34 +92,31 @@ bool FreeFloatingPids::ToEffortControl(const CTreq &_req, CTres &_res)
 
 void FreeFloatingPids::checkControlTypes(const CTreq &_req)
 {
-  const auto display = std::find(_req.axes.begin(),
-                                 _req.axes.end(),
-                                 "nodisplay") == _req.axes.end();
-
-  if(display)
+  if(state_received)
     std::cout << "Control modes:\n";
 
   position_used = velocity_used = false;
 
   for(const auto & axis: axes)
   {
-    std::cout << "   -  " << axis.name << ": ";
+    if(state_received)
+      std::cout << "   -  " << axis.name << ": ";
     if(axis.position.active)
     {
       position_used = true;
-      if(display)
+      if(state_received)
         std::cout << "position\n";
     }
     else if(axis.velocity.active)
     {
       velocity_used = true;
-      if(display)
+      if(state_received)
         std::cout << "velocity\n";
     }
-    else if(display)
+    else if(state_received)
       std::cout << "effort\n";
   }
-  if(display)
+  if(state_received)
     std::cout << std::endl;
 }
 

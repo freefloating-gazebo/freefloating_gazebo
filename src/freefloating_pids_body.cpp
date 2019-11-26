@@ -19,12 +19,9 @@ void FreeFloatingBodyPids::Init(ros::NodeHandle &nh, ros::Duration&_dt,
   // init dt from rate
   dt = _dt;
 
-  CTres res;
-  CTreq req;
-  req.axes = {"nodisplay"};
   if(!n)
   {
-    ToEffortControl(req, res);
+    initEffortControl();
     return;
   }
 
@@ -94,21 +91,19 @@ void FreeFloatingBodyPids::Init(ros::NodeHandle &nh, ros::Duration&_dt,
     InitPID(axis->velocity.pid, ros::NodeHandle(control_node, axis->name + "/velocity"), use_dynamic_reconfig);
   }
 
-  // default control = position
-  ToPositionControl(req, res);
-  if(default_mode == "velocity")
-  {
-    ToVelocityControl(req, res);
-  }
+  if(default_mode == "position")
+    initPositionControl();
+  else if(default_mode == "velocity")
+    initVelocityControl();
   else if(default_mode == "depth")
   {
-    req.axes = {"nodisplay", "x", "y", "yaw"};
-    ToVelocityControl(req, res);
+    initPositionControl({"roll", "pitch", "z"});
+    initVelocityControl({"x", "y", "yaw"});
   }
   else if(default_mode == "effort")
   {
-    req.axes = {"nodisplay", "x", "y", "z", "yaw"};
-    ToEffortControl(req, res);
+    initPositionControl({"roll", "pitch"});
+    initEffortControl({"x", "y", "z", "yaw"});
   }
   initSwitchServices(control_node, "body");
 }

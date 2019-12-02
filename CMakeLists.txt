@@ -124,10 +124,9 @@ install(TARGETS freefloating_gazebo_fluid
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
         
-install(DIRECTORY world
+install(DIRECTORY world 
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
-        
-        
+    
 # test Butterworth filter
 add_executable(butter test/testButter.cpp)
 target_link_libraries(butter ${catkin_LIBRARIES})
@@ -150,6 +149,7 @@ install(DIRECTORY include/${PROJECT_NAME}/
 install(DIRECTORY scripts
                   srv
                   gui
+                  launch
             DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
             
 catkin_install_python(PROGRAMS scripts/surface.py scripts/rviz_bridge.py
